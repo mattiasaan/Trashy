@@ -64,24 +64,48 @@ AI_MODEL=qwen2.5:3b
 ```
 OpenAI: lascia `AI_BASE_URL` vuoto e imposta `AI_API_KEY` e `AI_MODEL`.
 
-## Collegare il frontend
+## Collegare l'app (React Native + Expo)
 
-Due modi:
+**URL del backend**: mettilo in una variabile d'ambiente di Expo, nel `.env` dell'app:
+```
+EXPO_PUBLIC_API_URL=http://192.168.1.20:8000      # sviluppo: IP del PC nella rete di casa
+# EXPO_PUBLIC_API_URL=https://trashy.tuodominio.it  # produzione (Raspberry + Cloudflare Tunnel)
+```
+e nel codice `const API = process.env.EXPO_PUBLIC_API_URL`.
 
-1. **Sviluppo** (es. Vite su `http://localhost:5173`): backend con `uvicorn app.main:app --reload`,
-   nel `.env` metti `CORS_ORIGINS=http://localhost:5173` e nel frontend usa come base URL `http://localhost:8000`.
-   Per provare dal telefono: `--host 0.0.0.0` e l'IP del PC (es. `http://192.168.1.20:8000`).
-2. **Produzione / Raspberry** (consigliato): fai la build del frontend e imposta `FRONTEND_DIR=../frontend/dist`.
-   Il backend serve l'app su `/` e le API su `/api`: stessa origine, niente CORS, nel frontend basta chiamare
-   `/api/...` con percorsi relativi.
+**In sviluppo** (Expo Go sul telefono):
+- avvia il backend con `uvicorn app.main:app --reload --host 0.0.0.0`: con `localhost` il telefono non lo raggiunge;
+- usa l'IP del PC (`ipconfig` su Windows), con telefono e PC sulla stessa Wi-Fi;
+- se non risponde, consenti Python/porta 8000 nel firewall di Windows;
+- emulatore Android: `http://10.0.2.2:8000`; simulatore iOS: `http://localhost:8000`.
 
-Da sapere per il frontend:
-- **La geolocalizzazione del browser funziona solo in HTTPS** (o su `localhost`): in produzione serve HTTPS
-  (vedi Cloudflare Tunnel sotto).
-- Errori: le risposte non-200 hanno sempre `{"detail": ...}`. `429` = troppe richieste (mostra un messaggio),
-  `422` = input non valido (es. testo vuoto o > 200 caratteri), `404` = categoria inesistente.
-- Lingua: passa `lang` (`it`/`de`) se l'utente l'ha scelta nell'interfaccia, altrimenti viene rilevata dal testo.
-- Colori, nomi e istruzioni arrivano già localizzati: il frontend non deve duplicare le regole.
+**In produzione serve HTTPS**: le build di Android e iOS bloccano le chiamate `http://` (cleartext / App Transport
+Security). Con Cloudflare Tunnel (vedi sotto) l'HTTPS è automatico.
+
+Da sapere per l'app:
+- **CORS non riguarda l'app nativa** (vale solo nei browser): serve solo se pubblichi anche la versione web di Expo.
+- **Posizione**: usa `expo-location` e passa `lat`/`lon` a `/api/ask` o `/api/points`.
+- **Mappa**: `react-native-maps` (o MapLibre per React Native) con i `points` così come arrivano (`lat`, `lon`, `kind`).
+  Mostra sempre `map_attribution` di `/api/info` ("© OpenStreetMap contributors"): è obbligatoria per la licenza ODbL.
+- **Lingua**: passa `lang` (`it`/`de`), per esempio dalla lingua del telefono con `expo-localization`
+  (se non è `de` usa `it`). Se manca, viene rilevata dal testo.
+- **Errori**: le risposte non-200 hanno sempre `{"detail": ...}`. `429` = troppe richieste (mostra un messaggio),
+  `422` = input non valido (es. testo vuoto o > 200 caratteri), `404` = categoria inesistente. Gestisci anche
+  l'assenza di rete (fetch che fallisce).
+- Nomi, colori e istruzioni arrivano già tradotti: l'app non deve duplicare le regole.
+- **Tipi TypeScript**: con il backend avviato, `npx openapi-typescript http://localhost:8000/openapi.json -o api-types.ts`
+  genera i tipi di tutte le richieste e risposte (rigenerali se l'API cambia).
+
+Esempio minimo:
+```ts
+const res = await fetch(`${API}/api/ask`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ text, lang, lat, lon }),
+});
+if (res.status === 429) { /* "Troppe richieste, riprova tra poco" */ }
+const data = await res.json(); // data.found, data.category, data.answer, data.points
+```
 
 ## API per il frontend
 
@@ -131,15 +155,16 @@ Punti per la mappa, ordinati per distanza. `category` e `kind` (`container` | `c
   la risposta viene validata (categoria fuori lista → "non ho capito", `item` ripulito e max 60 caratteri)
   e il testo mostrato viene sempre dal file delle regole. Una prompt injection non produce testo libero.
 - **Chiave API** solo nel `.env` sul server: il frontend non la vede mai.
-- **Rate limiting per IP**: `/api/ask` 10/min, `/api/points` 60/min (`RATE_LIMIT_*`). Oltre il limite: HTTP 429.
+- **Rate limiting per IP**: `/api/ask` 20/min, `/api/points` 60/min (`RATE_LIMIT_*`). Oltre il limite: HTTP 429.
+  Non abbassarli troppo: sulla rete mobile molti utenti condividono lo stesso IP (CGNAT).
 - **Tetto giornaliero globale** di chiamate AI (`AI_DAILY_LIMIT`): protegge quota e costi anche se
   qualcuno usa molti IP. Superato il tetto si usano le regex.
 - **Cache** delle domande uguali, **testo max 200 caratteri**, **max_tokens** e **timeout** sulle risposte.
-- **In produzione**: `CORS_ORIGINS` con il solo dominio del frontend e `DOCS_ENABLED=false`.
+- **In produzione**: `DOCS_ENABLED=false` (e `CORS_ORIGINS` col solo dominio se pubblichi la versione web di Expo).
 
 Limiti da conoscere:
-- Un'API pubblica non si può riservare al 100% al proprio frontend: CORS blocca solo gli altri siti nel
-  browser, non chi chiama con script. Le protezioni vere sono quelle sopra (output inutile fuori dall'app,
+- Un'API pubblica non si può riservare al 100% alla propria app: qualsiasi chiave messa nell'app si può
+  estrarre dal pacchetto, e CORS blocca solo gli altri siti nel browser, non chi chiama con script. Le protezioni vere sono quelle sopra (output inutile fuori dall'app,
   rate limit, tetto giornaliero).
 - Rate limit e tetto sono in memoria: si azzerano al riavvio e valgono per un solo processo uvicorn.
 - Dietro un reverse proxy (nginx, Cloudflare Tunnel) avvia con
@@ -159,7 +184,7 @@ python3 -m venv .venv
 
 # 2. Configurazione
 cp .env.example .env
-nano .env                     # CORS_ORIGINS, DOCS_ENABLED=false, AI, FRONTEND_DIR...
+nano .env                     # DOCS_ENABLED=false, AI, ...
 chmod 600 .env                # contiene la chiave API
 
 # 3. Dati
@@ -182,7 +207,7 @@ journalctl -u trashy -f       # log
 
 ### Pubblicarlo su Internet con HTTPS: Cloudflare Tunnel (consigliato)
 
-Niente porte da aprire sul router, HTTPS automatico (necessario per la geolocalizzazione) e IP di casa nascosto.
+Niente porte da aprire sul router, HTTPS automatico (necessario per le build di produzione dell'app) e IP di casa nascosto.
 Serve un dominio gestito su Cloudflare (account gratuito).
 ```bash
 # installa cloudflared seguendo la guida ufficiale per Debian/Raspberry Pi, poi:
@@ -192,12 +217,12 @@ cloudflared tunnel route dns trashy trashy.tuodominio.it
 cloudflared tunnel run --url http://127.0.0.1:8000 trashy   # prova
 # per avviarlo in automatico: sudo cloudflared service install (vedi guida Cloudflare)
 ```
-Poi nel `.env`: `CORS_ORIGINS=https://trashy.tuodominio.it` e `DOCS_ENABLED=false`.
+Poi nel `.env` del backend `DOCS_ENABLED=false` e nell'app `EXPO_PUBLIC_API_URL=https://trashy.tuodominio.it`.
 Il servizio è già avviato con `--proxy-headers --forwarded-allow-ips=127.0.0.1`, così il rate limit vede
 l'IP reale degli utenti e non quello del tunnel.
 
-Solo rete di casa (senza Internet): in `trashy.service` cambia `--host 127.0.0.1` in `--host 0.0.0.0` e
-apri `http://<ip-del-raspberry>:8000`. Senza HTTPS però la geolocalizzazione del telefono non funziona.
+Solo rete di casa (per provare con Expo Go): in `trashy.service` cambia `--host 127.0.0.1` in `--host 0.0.0.0`
+e usa `EXPO_PUBLIC_API_URL=http://<ip-del-raspberry>:8000`. Le build di produzione invece richiedono HTTPS.
 
 ### Ollama sullo stesso Raspberry
 Un Pi 5 da 8 GB regge modelli piccoli (es. `qwen2.5:1.5b` o `3b`), ma le risposte possono richiedere

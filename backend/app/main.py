@@ -3,12 +3,10 @@
 Avvio:  uvicorn app.main:app --reload     (dalla cartella backend/)
 Docs:   http://localhost:8000/docs
 """
-from pathlib import Path
 from typing import Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from . import classifier, config, points
@@ -66,6 +64,7 @@ class Note(BaseModel):
 class Info(BaseModel):
     municipality: str
     source: str | None
+    map_attribution: str = Field(description="Da mostrare sulla mappa (obbligatoria per la licenza ODbL di OSM)")
     notes: list[Note]
 
 
@@ -106,7 +105,12 @@ def health():
 @app.get("/api/info", response_model=Info)
 def info(lang: Lang = "it"):
     """Fonte delle regole e note generali (residenza, multe per abbandono, ...)."""
-    return {"municipality": MUNICIPALITY, "source": SOURCE, "notes": localized_notes(lang)}
+    return {
+        "municipality": MUNICIPALITY,
+        "source": SOURCE,
+        "map_attribution": "© OpenStreetMap contributors",
+        "notes": localized_notes(lang),
+    }
 
 
 @app.get("/api/categories", response_model=list[Category])
@@ -159,13 +163,3 @@ def list_points(
     if category and category not in CATEGORIES:
         raise HTTPException(404, "Categoria non trovata")
     return points.nearby(lat, lon, radius_m, category=category, kind=kind, limit=limit)
-
-
-# Frontend opzionale servito dallo stesso server (es. la build di Vite): stessa origine,
-# niente CORS, un solo servizio sul Raspberry. Va montato DOPO le rotte /api.
-if config.FRONTEND_DIR:
-    frontend = Path(config.FRONTEND_DIR)
-    if not frontend.is_absolute():
-        frontend = config.BASE_DIR / frontend
-    if frontend.is_dir():
-        app.mount("/", StaticFiles(directory=frontend, html=True), name="frontend")

@@ -23,11 +23,10 @@ AI_REASONING_EFFORT = os.getenv("AI_REASONING_EFFORT") or None
 # Tetto globale di chiamate AI al giorno (tutti gli utenti insieme). Superato -> solo regex
 AI_DAILY_LIMIT = int(os.getenv("AI_DAILY_LIMIT", "200"))
 
-# Rate limiting per IP (richieste al minuto)
-RATE_LIMIT_ASK = int(os.getenv("RATE_LIMIT_ASK", "10"))
+# Rate limiting per IP (richieste al minuto). Non troppo basso: sulla rete mobile
+# molti utenti condividono lo stesso IP (CGNAT degli operatori)
+RATE_LIMIT_ASK = int(os.getenv("RATE_LIMIT_ASK", "20"))
 RATE_LIMIT_POINTS = int(os.getenv("RATE_LIMIT_POINTS", "60"))
 
 CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "*").split(",")]
 DOCS_ENABLED = os.getenv("DOCS_ENABLED", "true").lower() == "true"
-# Cartella della build del frontend da servire su "/" (es. ../frontend/dist). Vuoto = disattivato
-FRONTEND_DIR = os.getenv("FRONTEND_DIR", "")
