@@ -33,6 +33,7 @@ data/
   trashy.db            creato da import_osm
 scripts/
   import_osm.py  Overpass API -> SQLite
+deploy/          file systemd per il Raspberry Pi
 ```
 
 ## AI
@@ -63,6 +64,25 @@ AI_MODEL=qwen2.5:3b
 ```
 OpenAI: lascia `AI_BASE_URL` vuoto e imposta `AI_API_KEY` e `AI_MODEL`.
 
+## Collegare il frontend
+
+Due modi:
+
+1. **Sviluppo** (es. Vite su `http://localhost:5173`): backend con `uvicorn app.main:app --reload`,
+   nel `.env` metti `CORS_ORIGINS=http://localhost:5173` e nel frontend usa come base URL `http://localhost:8000`.
+   Per provare dal telefono: `--host 0.0.0.0` e l'IP del PC (es. `http://192.168.1.20:8000`).
+2. **Produzione / Raspberry** (consigliato): fai la build del frontend e imposta `FRONTEND_DIR=../frontend/dist`.
+   Il backend serve l'app su `/` e le API su `/api`: stessa origine, niente CORS, nel frontend basta chiamare
+   `/api/...` con percorsi relativi.
+
+Da sapere per il frontend:
+- **La geolocalizzazione del browser funziona solo in HTTPS** (o su `localhost`): in produzione serve HTTPS
+  (vedi Cloudflare Tunnel sotto).
+- Errori: le risposte non-200 hanno sempre `{"detail": ...}`. `429` = troppe richieste (mostra un messaggio),
+  `422` = input non valido (es. testo vuoto o > 200 caratteri), `404` = categoria inesistente.
+- Lingua: passa `lang` (`it`/`de`) se l'utente l'ha scelta nell'interfaccia, altrimenti viene rilevata dal testo.
+- Colori, nomi e istruzioni arrivano già localizzati: il frontend non deve duplicare le regole.
+
 ## API per il frontend
 
 ### `POST /api/ask` – domanda in linguaggio naturale
@@ -78,7 +98,7 @@ Il frontend deve gestire **HTTP 429** (troppe richieste) mostrando un messaggio 
   "source": "regex",
   "item": "capsule del caffe",
   "category": {
-    "id": "residuo", "name": "Residuo", "bin": "Bidone grigio del residuo",
+    "id": "residuo", "name": "Residuo", "bin": "Contenitore del residuo",
     "color": "#6b7280", "instructions": "Va nel residuo...", "has_points": false,
     "ref": "Art. 5, 8, 32.6"
   },
@@ -125,6 +145,64 @@ Limiti da conoscere:
 - Dietro un reverse proxy (nginx, Cloudflare Tunnel) avvia con
   `uvicorn app.main:app --proxy-headers --forwarded-allow-ips=127.0.0.1`, altrimenti tutti gli utenti
   hanno l'IP del proxy e condividono lo stesso limite.
+
+## Deploy su Raspberry Pi
+
+Requisiti: Raspberry Pi OS **Bookworm o più recente** (serve Python ≥ 3.11), Pi 4/5 a 64 bit.
+
+```bash
+# 1. Copia la cartella backend sul Raspberry (es. in ~/trashy/backend), senza .venv e .env
+sudo apt install -y python3-venv
+cd ~/trashy/backend
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+
+# 2. Configurazione
+cp .env.example .env
+nano .env                     # CORS_ORIGINS, DOCS_ENABLED=false, AI, FRONTEND_DIR...
+chmod 600 .env                # contiene la chiave API
+
+# 3. Dati
+.venv/bin/python -m scripts.import_osm
+
+# 4. Servizi (sostituisci TUOUTENTE nei file con il tuo utente)
+sed -i "s/TUOUTENTE/$USER/g" deploy/*.service
+sudo cp deploy/trashy.service deploy/trashy-osm.service deploy/trashy-osm.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now trashy trashy-osm.timer
+
+# Controllo
+curl http://127.0.0.1:8000/api/health
+journalctl -u trashy -f       # log
+```
+
+- `trashy.service` avvia l'API all'accensione e la riavvia se si blocca (1 worker, su `127.0.0.1:8000`).
+- `trashy-osm.timer` aggiorna i punti di raccolta ogni lunedì alle 4:00.
+- Dopo una modifica al codice o al `.env`: `sudo systemctl restart trashy`.
+
+### Pubblicarlo su Internet con HTTPS: Cloudflare Tunnel (consigliato)
+
+Niente porte da aprire sul router, HTTPS automatico (necessario per la geolocalizzazione) e IP di casa nascosto.
+Serve un dominio gestito su Cloudflare (account gratuito).
+```bash
+# installa cloudflared seguendo la guida ufficiale per Debian/Raspberry Pi, poi:
+cloudflared tunnel login
+cloudflared tunnel create trashy
+cloudflared tunnel route dns trashy trashy.tuodominio.it
+cloudflared tunnel run --url http://127.0.0.1:8000 trashy   # prova
+# per avviarlo in automatico: sudo cloudflared service install (vedi guida Cloudflare)
+```
+Poi nel `.env`: `CORS_ORIGINS=https://trashy.tuodominio.it` e `DOCS_ENABLED=false`.
+Il servizio è già avviato con `--proxy-headers --forwarded-allow-ips=127.0.0.1`, così il rate limit vede
+l'IP reale degli utenti e non quello del tunnel.
+
+Solo rete di casa (senza Internet): in `trashy.service` cambia `--host 127.0.0.1` in `--host 0.0.0.0` e
+apri `http://<ip-del-raspberry>:8000`. Senza HTTPS però la geolocalizzazione del telefono non funziona.
+
+### Ollama sullo stesso Raspberry
+Un Pi 5 da 8 GB regge modelli piccoli (es. `qwen2.5:1.5b` o `3b`), ma le risposte possono richiedere
+diversi secondi: imposta `AI_TIMEOUT=60` e lascia `AI_FIRST=false` così l'LLM interviene solo quando le regex
+non bastano.
 
 ## Regole
 

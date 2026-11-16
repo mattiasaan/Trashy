@@ -3,10 +3,12 @@
 Avvio:  uvicorn app.main:app --reload     (dalla cartella backend/)
 Docs:   http://localhost:8000/docs
 """
+from pathlib import Path
 from typing import Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from . import classifier, config, points
@@ -40,8 +42,8 @@ NOT_FOUND = {
 class AskRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=200,examples=["Dove butto le capsule del caffè?"])
     lang: Lang | None = Field(None, description="Se assente viene rilevata dal testo")
-    lat: float | None = Field(None, description="Posizione utente: se presente restituisce anche i punti vicini")
-    lon: float | None = None
+    lat: float | None = Field(None, ge=-90, le=90, description="Posizione utente: se presente (con lon) restituisce anche i punti vicini")
+    lon: float | None = Field(None, ge=-180, le=180)
     radius_m: int = Field(3000, ge=100, le=50000)
 
 
@@ -147,8 +149,8 @@ def ask(req: AskRequest):
 
 @app.get("/api/points", response_model=list[Point], dependencies=[Depends(limit_points)])
 def list_points(
-    lat: float,
-    lon: float,
+    lat: float = Query(..., ge=-90, le=90),
+    lon: float = Query(..., ge=-180, le=180),
     radius_m: int = Query(3000, ge=100, le=50000),
     category: str | None = Query(None, description="Id categoria, es. 'vetro_metallo'"),
     kind: Literal["container", "centre", "pharmacy"] | None = None,
@@ -157,3 +159,13 @@ def list_points(
     if category and category not in CATEGORIES:
         raise HTTPException(404, "Categoria non trovata")
     return points.nearby(lat, lon, radius_m, category=category, kind=kind, limit=limit)
+
+
+# Frontend opzionale servito dallo stesso server (es. la build di Vite): stessa origine,
+# niente CORS, un solo servizio sul Raspberry. Va montato DOPO le rotte /api.
+if config.FRONTEND_DIR:
+    frontend = Path(config.FRONTEND_DIR)
+    if not frontend.is_absolute():
+        frontend = config.BASE_DIR / frontend
+    if frontend.is_dir():
+        app.mount("/", StaticFiles(directory=frontend, html=True), name="frontend")

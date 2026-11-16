@@ -29,3 +29,5 @@ RATE_LIMIT_POINTS = int(os.getenv("RATE_LIMIT_POINTS", "60"))
 
 CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "*").split(",")]
 DOCS_ENABLED = os.getenv("DOCS_ENABLED", "true").lower() == "true"
+# Cartella della build del frontend da servire su "/" (es. ../frontend/dist). Vuoto = disattivato
+FRONTEND_DIR = os.getenv("FRONTEND_DIR", "")
