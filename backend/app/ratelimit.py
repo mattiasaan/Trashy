@@ -9,6 +9,16 @@ from collections import defaultdict, deque
 
 from fastapi import HTTPException, Request
 
+from . import config
+
+
+def client_ip(request: Request) -> str:
+    if config.TRUST_CF_CONNECTING_IP:
+        cf = request.headers.get("cf-connecting-ip")
+        if cf:
+            return cf.strip()
+    return request.client.host if request.client else "unknown"
+
 
 class RateLimiter:
     def __init__(self, limit: int, window_s: int = 60):
@@ -32,6 +42,6 @@ class RateLimiter:
 
     def __call__(self, request: Request):
         """Usabile come dipendenza FastAPI: Depends(limiter)."""
-        ip = request.client.host if request.client else "unknown"
+        ip = client_ip(request)
         if not self.allow(ip):
             raise HTTPException(429, "Troppe richieste, riprova tra poco / Zu viele Anfragen, bitte später erneut versuchen")

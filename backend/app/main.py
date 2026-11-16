@@ -5,12 +5,12 @@ Docs:   http://localhost:8000/docs
 """
 from typing import Literal
 
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from . import classifier, config, points
-from .ratelimit import RateLimiter
+from .ratelimit import RateLimiter, client_ip
 from .rules import CATEGORIES, MUNICIPALITY, SOURCE, localized, localized_notes
 
 Lang = Literal["it", "de"]
@@ -97,7 +97,6 @@ def health():
     return {
         "status": "ok",
         "municipality": MUNICIPALITY,
-        "ai_enabled": config.AI_ENABLED,
         "points_count": points.count(),
     }
 
@@ -126,9 +125,9 @@ def get_category(category_id: str, lang: Lang = "it"):
 
 
 @app.post("/api/ask", response_model=AskResponse, dependencies=[Depends(limit_ask)])
-def ask(req: AskRequest):
+def ask(req: AskRequest, request: Request):
     lang = req.lang or classifier.detect_lang(req.text)
-    result = classifier.classify(req.text)
+    result = classifier.classify(req.text, client_ip(request))
     cid = result["category"]
 
     if cid is None:

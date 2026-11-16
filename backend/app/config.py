@@ -22,11 +22,17 @@ AI_MAX_TOKENS = int(os.getenv("AI_MAX_TOKENS", "300"))
 AI_REASONING_EFFORT = os.getenv("AI_REASONING_EFFORT") or None
 # Tetto globale di chiamate AI al giorno (tutti gli utenti insieme). Superato -> solo regex
 AI_DAILY_LIMIT = int(os.getenv("AI_DAILY_LIMIT", "200"))
+# Tetto di chiamate AI al giorno per singolo IP: un solo client non può esaurire il tetto globale
+AI_DAILY_LIMIT_PER_IP = int(os.getenv("AI_DAILY_LIMIT_PER_IP", "15"))
 
 # Rate limiting per IP (richieste al minuto). Non troppo basso: sulla rete mobile
 # molti utenti condividono lo stesso IP (CGNAT degli operatori)
 RATE_LIMIT_ASK = int(os.getenv("RATE_LIMIT_ASK", "20"))
 RATE_LIMIT_POINTS = int(os.getenv("RATE_LIMIT_POINTS", "60"))
 
-CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "*").split(",")]
-DOCS_ENABLED = os.getenv("DOCS_ENABLED", "true").lower() == "true"
+# Default sicuri: nessuna origine browser ammessa, /docs nascosto
+CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "").split(",") if o.strip()]
+DOCS_ENABLED = os.getenv("DOCS_ENABLED", "false").lower() == "true"
+# true SOLO se il server è raggiungibile esclusivamente tramite Cloudflare (Tunnel su 127.0.0.1):
+# usa l'header CF-Connecting-IP (impostato da Cloudflare, non falsificabile dal client) come IP reale
+TRUST_CF_CONNECTING_IP = os.getenv("TRUST_CF_CONNECTING_IP", "false").lower() == "true"

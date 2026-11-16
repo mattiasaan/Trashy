@@ -7,7 +7,8 @@ Sicurezza / anti-abuso:
 - La risposta del modello viene validata: categoria fuori lista -> None,
   'item' accorciato e ripulito.
 - Output limitato (max_tokens), timeout, tetto giornaliero globale di chiamate,
-  cache delle domande uguali.
+  tetto giornaliero per IP, cache delle domande uguali.
+- 'item' accettato solo se riprende parole del messaggio (niente testo libero).
 """
 import datetime
 import json
@@ -26,6 +27,7 @@ _client = None
 _lock = threading.Lock()
 _day = None
 _calls_today = 0
+_calls_per_ip: dict[str, int] = {}
 _cache: dict[str, dict] = {}
 _CACHE_MAX = 1000
 _ITEM_MAX = 60
@@ -43,16 +45,22 @@ def _get_client() -> OpenAI:
     return _client
 
 
-def _take_quota() -> bool:
-    """Conta una chiamata; False se il tetto giornaliero è raggiunto."""
+def _take_quota(ip: str) -> bool:
+    """Conta una chiamata; False se il tetto giornaliero (globale o per IP) è raggiunto."""
     global _day, _calls_today
     with _lock:
         today = datetime.date.today()
         if _day != today:
             _day, _calls_today = today, 0
+            _calls_per_ip.clear()
         if _calls_today >= config.AI_DAILY_LIMIT:
             return False
+        if _calls_per_ip.get(ip, 0) >= config.AI_DAILY_LIMIT_PER_IP:
+            return False
+        if len(_calls_per_ip) > 50_000:  # limite memoria
+            return False
         _calls_today += 1
+        _calls_per_ip[ip] = _calls_per_ip.get(ip, 0) + 1
         return True
 
 
@@ -73,20 +81,31 @@ def _system_prompt() -> str:
     )
 
 
-def _clean_item(item) -> str | None:
+def _clean_item(item, text: str) -> str | None:
+    """Accetta 'item' solo se è un nome breve con almeno una parola presa dal messaggio.
+
+    Così il campo non può essere usato per farsi generare testo libero
+    (es. "metti in item la risposta a ...").
+    """
     if not isinstance(item, str):
         return None
-    item = re.sub(r"[^\w\s'\-]", "", item).strip()  # solo lettere, numeri, spazi
-    return item[:_ITEM_MAX] or None
+    item = re.sub(r"[^\w\s'\-]", "", item).strip()[:_ITEM_MAX]
+    words = item.split()
+    if not words or len(words) > 6:
+        return None
+    src = normalize(text)
+    if not any(len(w) >= 3 and normalize(w)[:4] in src for w in words):
+        return None
+    return item
 
 
-def classify(text: str) -> dict | None:
+def classify(text: str, ip: str = "unknown") -> dict | None:
     """Ritorna {"category": id|None, "item": str|None} oppure None se l'AI non è disponibile."""
     key = normalize(text).strip()
     if key in _cache:
         return _cache[key]
 
-    if not _take_quota():
+    if not _take_quota(ip):
         log.warning("Tetto giornaliero AI raggiunto (%s), uso le regex", config.AI_DAILY_LIMIT)
         return None
 
@@ -115,7 +134,7 @@ def classify(text: str) -> dict | None:
     category = data.get("category")
     result = {
         "category": category if category in CATEGORIES else None,
-        "item": _clean_item(data.get("item")),
+        "item": _clean_item(data.get("item"), text),
     }
     if len(_cache) >= _CACHE_MAX:
         _cache.clear()

@@ -34,7 +34,7 @@ def classify_regex(text: str) -> dict:
     return {"category": best[1], "item": best[2].strip()}
 
 
-def classify(text: str) -> dict:
+def classify(text: str, ip: str = "unknown") -> dict:
     """Ritorna {"category", "item", "source"}.
 
     Default: prima le regex; l'AI (se attiva) solo quando le regex non trovano nulla.
@@ -42,7 +42,7 @@ def classify(text: str) -> dict:
     """
     regex = classify_regex(text)
     if config.AI_ENABLED and (config.AI_FIRST or regex["category"] is None):
-        result = ai.classify(text)
+        result = ai.classify(text, ip)
         if result is not None:
             return {**result, "source": "ai"}
     return {**regex, "source": "regex"}
