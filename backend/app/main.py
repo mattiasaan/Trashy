@@ -5,22 +5,27 @@ Docs:   http://localhost:8000/docs
 """
 from typing import Literal
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from . import classifier, config, points
+from .ratelimit import RateLimiter
 from .rules import CATEGORIES, MUNICIPALITY, localized
 
 Lang = Literal["it", "de"]
 
-app = FastAPI(title="Trashy API", version="0.1.0")
+docs = {} if config.DOCS_ENABLED else {"docs_url": None, "redoc_url": None, "openapi_url": None}
+app = FastAPI(title="Trashy API", version="0.1.0", **docs)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=config.CORS_ORIGINS,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
 )
+
+limit_ask = RateLimiter(config.RATE_LIMIT_ASK)
+limit_points = RateLimiter(config.RATE_LIMIT_POINTS)
 
 NOT_FOUND = {
     "it": "Non ho capito di che rifiuto si tratta. Prova a descriverlo in un altro modo "
@@ -33,7 +38,7 @@ NOT_FOUND = {
 # ---------- Modelli ----------
 
 class AskRequest(BaseModel):
-    text: str = Field(..., min_length=1, max_length=500, examples=["Dove butto le capsule del caffè?"])
+    text: str = Field(..., min_length=1, max_length=200,examples=["Dove butto le capsule del caffè?"])
     lang: Lang | None = Field(None, description="Se assente viene rilevata dal testo")
     lat: float | None = Field(None, description="Posizione utente: se presente restituisce anche i punti vicini")
     lon: float | None = None
@@ -79,7 +84,6 @@ def health():
         "status": "ok",
         "municipality": MUNICIPALITY,
         "ai_enabled": config.AI_ENABLED,
-        "ai_model": config.AI_MODEL if config.AI_ENABLED else None,
         "points_count": points.count(),
     }
 
@@ -96,7 +100,7 @@ def get_category(category_id: str, lang: Lang = "it"):
     return localized(category_id, lang)
 
 
-@app.post("/api/ask", response_model=AskResponse)
+@app.post("/api/ask", response_model=AskResponse, dependencies=[Depends(limit_ask)])
 def ask(req: AskRequest):
     lang = req.lang or classifier.detect_lang(req.text)
     result = classifier.classify(req.text)
@@ -122,7 +126,7 @@ def ask(req: AskRequest):
     )
 
 
-@app.get("/api/points", response_model=list[Point])
+@app.get("/api/points", response_model=list[Point], dependencies=[Depends(limit_points)])
 def list_points(
     lat: float,
     lon: float,

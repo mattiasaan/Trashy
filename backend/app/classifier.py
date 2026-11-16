@@ -35,9 +35,14 @@ def classify_regex(text: str) -> dict:
 
 
 def classify(text: str) -> dict:
-    """Ritorna {"category", "item", "source"}. Usa l'AI se attiva, altrimenti (o se fallisce) le regex."""
-    if config.AI_ENABLED:
+    """Ritorna {"category", "item", "source"}.
+
+    Default: prima le regex; l'AI (se attiva) solo quando le regex non trovano nulla.
+    Con AI_FIRST=true l'AI viene chiamata sempre. Se l'AI fallisce si usano le regex.
+    """
+    regex = classify_regex(text)
+    if config.AI_ENABLED and (config.AI_FIRST or regex["category"] is None):
         result = ai.classify(text)
         if result is not None:
             return {**result, "source": "ai"}
-    return {**classify_regex(text), "source": "regex"}
+    return {**regex, "source": "regex"}
