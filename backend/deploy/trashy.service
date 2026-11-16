@@ -1,0 +1,19 @@
+# Servizio systemd: avvia Trashy all'accensione e lo riavvia se si blocca.
+# Sostituisci TUOUTENTE con il tuo utente del Raspberry, poi vedi README "Deploy su Raspberry Pi".
+[Unit]
+Description=Trashy API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=TUOUTENTE
+WorkingDirectory=/home/TUOUTENTE/trashy/backend
+# 1 solo worker: rate limit e tetto AI sono in memoria.
+# 127.0.0.1 = raggiungibile solo dal Raspberry stesso (es. tramite Cloudflare Tunnel).
+# Per provarlo dalla rete di casa usa --host 0.0.0.0
+ExecStart=/home/TUOUTENTE/trashy/backend/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 1 --proxy-headers --forwarded-allow-ips=127.0.0.1
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

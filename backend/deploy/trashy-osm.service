@@ -1,0 +1,11 @@
+# Aggiorna i punti di raccolta da OpenStreetMap (avviato da trashy-osm.timer).
+[Unit]
+Description=Trashy - aggiornamento punti OSM
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=TUOUTENTE
+WorkingDirectory=/home/TUOUTENTE/trashy/backend
+ExecStart=/home/TUOUTENTE/trashy/backend/.venv/bin/python -m scripts.import_osm

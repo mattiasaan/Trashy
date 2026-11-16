@@ -1,0 +1,10 @@
+# Lancia trashy-osm.service ogni lunedì alle 4:00 (se il Raspberry era spento, appena si riaccende).
+[Unit]
+Description=Trashy - aggiornamento settimanale punti OSM
+
+[Timer]
+OnCalendar=Mon *-*-* 04:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
