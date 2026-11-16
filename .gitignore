@@ -1,4 +1,4 @@
 .venv/
 __pycache__/
 .env
-data/trashy.db
+backend/data/trashy.db

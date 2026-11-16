@@ -1,15 +1,37 @@
 {
-  "_info": "Regole di conferimento per Bolzano (SEAB). DA VERIFICARE con la guida ufficiale SEAB (www.seab.bz.it) prima dell'uso pubblico. 'patterns' sono regex applicate al testo minuscolo e senza accenti/umlaut (ü -> u, ß -> ss). In caso di più match vince il match più lungo (più specifico).",
+  "_info": "Regole di conferimento per Bolzano basate sul 'Regolamento gestione rifiuti / Abfallordnung' della Città di Bolzano. 'ref' indica l'articolo. 'patterns' sono regex applicate al testo minuscolo e senza accenti/umlaut (ü -> u, ß -> ss). In caso di più match vince il match più lungo (più specifico). Le voci con 'ref' null non sono trattate esplicitamente dal regolamento: verificarle con SEAB.",
   "municipality": "Bolzano",
+  "source": "Regolamento gestione rifiuti - Città di Bolzano / Abfallordnung - Stadt Bozen",
+  "notes": [
+    {
+      "id": "solo_residenti",
+      "ref": "Art. 32.10",
+      "it": "Solo chi risiede, è domiciliato o ha un locale a Bolzano può conferire rifiuti nel territorio comunale e nei centri di raccolta.",
+      "de": "Nur wer in Bozen wohnhaft oder ansässig ist oder eine Räumlichkeit in der Gemeinde führt, darf dort Abfälle entsorgen oder bei den Recyclinghöfen abgeben."
+    },
+    {
+      "id": "abbandono",
+      "ref": "Art. 32.5, 36",
+      "it": "È vietato abbandonare rifiuti su suolo pubblico o accanto ai contenitori: multa da 200 a 600 € (da 400 a 1.200 € per aziende ed enti).",
+      "de": "Es ist verboten, Abfälle auf öffentlichem Grund oder neben den Behältern abzulagern: Strafe von 200 bis 600 € (400 bis 1.200 € für Unternehmen und Körperschaften)."
+    },
+    {
+      "id": "contenitore_pieno",
+      "ref": "Art. 32.4",
+      "it": "Se il contenitore è pieno usa un altro contenitore o aspetta lo svuotamento: non lasciare i rifiuti fuori.",
+      "de": "Ist der Behälter voll, einen anderen benutzen oder die Leerung abwarten: Abfälle nicht daneben abstellen."
+    }
+  ],
   "categories": [
     {
       "id": "residuo",
+      "ref": "Art. 5, 8, 32.6",
       "name": { "it": "Residuo", "de": "Restmüll" },
-      "bin": { "it": "Bidone grigio del residuo", "de": "Graue Restmülltonne" },
+      "bin": { "it": "Contenitore del residuo", "de": "Restmülltonne" },
       "color": "#6b7280",
       "instructions": {
-        "it": "Va nel residuo. Usa i sacchi o il bidone grigio e rispetta i giorni di raccolta del tuo quartiere.",
-        "de": "Gehört in den Restmüll. Verwende die graue Tonne bzw. die Säcke und beachte die Abholtage in deinem Viertel."
+        "it": "Va nel residuo, sempre in sacchetti chiusi (mai sfuso), nel contenitore assegnato al tuo edificio. Nel residuo non vanno rifiuti riciclabili, pericolosi, ingombranti o inerti.",
+        "de": "Gehört in den Restmüll, immer in geschlossenen Säcken (nie lose), in die deinem Gebäude zugeteilte Tonne. Keine wiederverwertbaren, gefährlichen, sperrigen Abfälle oder Bauabfälle."
       },
       "points": null,
       "patterns": [
@@ -18,91 +40,106 @@
         "mozzicon\\w*", "cicc[ae]", "zigarett\\w*", "kippe\\w*",
         "sacchett\\w* (dell')?aspirapolvere", "staubsaugerbeutel\\w*", "polvere", "staub\\b",
         "spazzolin\\w*", "zahnburst\\w*",
-        "ceramic\\w*", "keramik\\w*", "porcellan\\w*", "porzellan\\w*",
         "bicchier\\w*", "trinkglas\\w*", "specch\\w*", "spiegel\\w*",
         "carta (da )?forno", "backpapier\\w*", "scontrin\\w*", "kassenbon\\w*",
-        "sacchett\\w* (di |in )?plastica", "plastiksack\\w*", "plastiktut\\w*", "pellicol\\w*", "folie\\w*",
-        "vaschett\\w*", "vasett\\w* (dello |del |di )?yogurt", "joghurtbecher\\w*",
+        "carta (plastificata|metallizzata|adesiva|oleata|catramata)", "klebefolie\\w*", "teerpappe\\w*",
+        "sughero\\w*", "tapp\\w* (di )?sughero", "kork\\w*", "vimini", "paglia", "stroh\\b",
+        "pelle\\b", "similpelle", "leder\\w*", "kunstleder\\w*", "gomma\\b", "gummi\\w*",
+        "strac(c|ci)\\w*", "lumpen\\w*", "segatura", "sagemehl\\w*",
+        "moquette", "linoleum", "tappezzeri\\w*", "tapete\\w*", "teppichboden\\w*",
+        "radiografi\\w*", "rontgenbild\\w*", "fotografi\\w*",
         "tetra ?pak", "getrankekarton\\w*",
-        "cartone (sporco|unto) (della |di )?pizza", "pizzakarton\\w*"
+        "cartone (sporco|unto) (della |di )?pizza", "pizzakarton\\w*", "fazzolett\\w*", "taschentuch\\w*"
       ]
     },
     {
       "id": "organico",
+      "ref": "Art. 11",
       "name": { "it": "Organico", "de": "Biomüll" },
-      "bin": { "it": "Bidone marrone dell'organico", "de": "Braune Biotonne" },
+      "bin": { "it": "Contenitore dell'organico", "de": "Biomülltonne" },
       "color": "#92400e",
       "instructions": {
-        "it": "Va nell'organico. Usa sacchetti compostabili, mai di plastica.",
-        "de": "Gehört in den Biomüll. Verwende kompostierbare Säcke, niemals Plastiksäcke."
+        "it": "Va nell'organico, usando SOLO sacchetti di carta. Vietati i sacchetti di plastica e anche quelli biodegradabili (mais, bioplastica). L'organico non si porta al centro di raccolta.",
+        "de": "Gehört in den Biomüll, AUSSCHLIESSLICH in Papiersäcken. Plastiksäcke und auch biologisch abbaubare Säcke (Mais, Biokunststoff) sind verboten. Biomüll wird nicht im Recyclinghof angenommen."
       },
       "points": null,
       "patterns": [
-        "avanz\\w*", "buc(c|ci)[ae]\\w*", "schale\\w*", "scart\\w* (di |da )?cucina", "kuchenabfall\\w*", "speisereste\\w*",
+        "avanz\\w*", "buc(c|ci)[ae]\\w*", "schale\\w*", "scart\\w* (di |da )?cucina", "scart\\w* aliment\\w*",
+        "kuchenabfall\\w*", "speisereste\\w*", "lebensmittel\\w*",
         "fond\\w* (di |del )?caffe", "kaffeesatz", "fil?tr\\w* (di |del )?(te|caffe)", "teebeutel\\w*",
         "guscio\\w*", "gusci\\b", "eierschale\\w*",
         "frutta", "obst\\w*", "verdur\\w*", "gemuse\\w*", "insalat\\w*",
         "pane\\b", "brot\\w*", "carne\\b", "fleisch\\w*", "pesce\\b", "fisch\\w*", "oss[oa]\\b", "knochen\\w*",
-        "fior[ei]\\b", "blumen\\w*", "tovaglioli? di carta", "papierservietten?"
+        "fior[ei]\\b", "blumen\\w*"
       ]
     },
     {
       "id": "carta",
+      "ref": "Art. 14, 15",
       "name": { "it": "Carta e cartone", "de": "Papier und Karton" },
-      "bin": { "it": "Contenitore della carta", "de": "Papiertonne" },
+      "bin": { "it": "Contenitore stradale della carta / centro di raccolta", "de": "Papiercontainer / Recyclinghof" },
       "color": "#2563eb",
       "instructions": {
-        "it": "Va nella carta. Appiattisci gli scatoloni e togli eventuali parti in plastica.",
-        "de": "Gehört ins Altpapier. Kartons flach zusammenlegen und Plastikteile entfernen."
+        "it": "Va nei contenitori stradali della carta o al centro di raccolta. Carta e cartone devono essere puliti, asciutti e senza impurità; i cartoni vanno piegati, appiattiti e ridotti di dimensione.",
+        "de": "Gehört in die Papiercontainer oder in den Recyclinghof. Papier und Karton müssen sauber, trocken und frei von Fremdstoffen sein; Kartons flach falten und verkleinern."
       },
-      "points": { "kinds": [], "materials": ["paper", "cardboard"] },
+      "points": { "kinds": ["centre"], "materials": ["paper", "cardboard", "paper_packaging"] },
       "patterns": [
-        "giornal\\w*", "zeitung\\w*", "rivist\\w*", "zeitschrift\\w*", "prospekt\\w*", "volantin\\w*",
-        "carton\\w*", "karton\\w*", "scatol\\w*", "schachtel\\w*",
-        "quadern\\w*", "heft\\w*", "libr[oi]\\b", "buch\\b", "bucher\\b",
+        "giornal\\w*", "zeitung\\w*", "rivist\\w*", "zeitschrift\\w*", "prospekt\\w*", "volantin\\w*", "catalog\\w*", "katalog\\w*",
+        "carton\\w*", "karton\\w*", "scatol\\w*", "schachtel\\w*", "pappe\\w*",
+        "quadern\\w*", "heft\\w*", "libr[oi]\\b", "buch\\b", "bucher\\b", "letter[ae]\\b", "brief\\w*",
+        "sacchett\\w* (di )?carta", "papiertut\\w*",
         "cart[ae]\\b", "papier\\w*"
       ]
     },
     {
       "id": "vetro_metallo",
+      "ref": "Art. 13",
       "name": { "it": "Vetro e lattine", "de": "Glas und Dosen" },
-      "bin": { "it": "Campana del vetro e lattine", "de": "Glas- und Dosencontainer" },
+      "bin": { "it": "Contenitore stradale vetro e lattine / centro di raccolta", "de": "Glas- und Dosencontainer / Recyclinghof" },
       "color": "#16a34a",
       "instructions": {
-        "it": "Va nella campana di vetro e lattine. Svuota i contenitori; non servono lavaggi accurati. Niente bicchieri, ceramica o specchi.",
-        "de": "Gehört in den Glas- und Dosencontainer. Behälter entleeren, gründliches Auswaschen ist nicht nötig. Keine Trinkgläser, Keramik oder Spiegel."
+        "it": "Gli imballaggi in vetro e metallo (bottiglie, vasetti, lattine, barattoli) vanno insieme nei contenitori stradali di vetro e lattine o al centro di raccolta. Bicchieri, specchi e ceramica non sono imballaggi e non vanno qui.",
+        "de": "Verpackungen aus Glas und Metall (Flaschen, Gläser, Dosen) gemeinsam in die Glas- und Dosencontainer oder in den Recyclinghof. Trinkgläser, Spiegel und Keramik sind keine Verpackungen und gehören nicht hierher."
       },
-      "points": { "kinds": [], "materials": ["glass_bottles", "glass", "cans"] },
+      "points": { "kinds": ["centre"], "materials": ["glass_bottles", "glass", "cans", "scrap_metal"] },
       "patterns": [
         "vetro", "glas\\b", "glaser\\b", "flasche\\w*", "bottigli\\w*",
         "barattol\\w*", "vasett\\w* (di )?vetro", "einmachglas\\w*", "marmeladeglas\\w*",
         "lattin\\w*", "dose\\b", "dosen\\w*", "getrankedose\\w*", "scatolett\\w*", "konserv\\w*",
-        "allumini\\w*", "alufolie\\w*", "alu\\b", "tapp\\w* (di |in )?metallo", "kronkorken\\w*"
+        "allumini\\w*", "alufolie\\w*", "alu\\b", "banda stagnata", "weissblech\\w*",
+        "tapp\\w* (di |in )?metallo", "kronkorken\\w*"
       ]
     },
     {
       "id": "plastica",
-      "name": { "it": "Bottiglie e flaconi in plastica", "de": "Plastikflaschen und -behälter" },
-      "bin": { "it": "Centro di riciclaggio / punti di raccolta plastica", "de": "Recyclinghof / Sammelstellen für Plastik" },
+      "ref": "Art. 16",
+      "name": { "it": "Imballaggi in plastica", "de": "Kunststoffverpackungen" },
+      "bin": { "it": "Contenitore stradale della plastica / centro di raccolta", "de": "Kunststoffcontainer / Recyclinghof" },
       "color": "#eab308",
       "instructions": {
-        "it": "Bottiglie e flaconi in plastica vanno consegnati al centro di riciclaggio o nei punti di raccolta dedicati. Gli altri imballaggi in plastica vanno nel residuo.",
-        "de": "Plastikflaschen und -behälter bitte im Recyclinghof oder an den eigenen Sammelstellen abgeben. Andere Plastikverpackungen gehören in den Restmüll."
+        "it": "Tutti gli imballaggi in plastica vanno nei contenitori stradali della plastica o al centro di raccolta. Prima puliscili e schiacciali per ridurne il volume. Gli oggetti in plastica che non sono imballaggi vanno nel residuo.",
+        "de": "Alle Kunststoffverpackungen gehören in die Kunststoffcontainer oder in den Recyclinghof. Vorher reinigen und zusammendrücken, um das Volumen zu verringern. Kunststoffgegenstände, die keine Verpackungen sind, gehören in den Restmüll."
       },
-      "points": { "kinds": ["centre"], "materials": ["plastic_bottles", "plastic_packaging", "plastic"] },
+      "points": { "kinds": ["centre"], "materials": ["plastic_packaging", "plastic", "plastic_bottles"] },
       "patterns": [
-        "bottigli\\w* (di |in )?plastica", "plastikflasche\\w*", "pet\\b", "flacon\\w*", "plastikbehalter\\w*",
-        "(flacone|flaconi|bottiglia) (dello |di )?(shampoo|detersivo)", "shampooflasche\\w*", "spulmittelflasche\\w*"
+        "plastica", "plastik\\w*", "kunststoff\\w*",
+        "bottigli\\w* (di |in )?plastica", "plastikflasche\\w*", "pet\\b", "flacon\\w*",
+        "(flacone|flaconi|bottiglia) (dello |di |del )?(shampoo|detersivo|sapone)", "shampooflasche\\w*", "spulmittelflasche\\w*",
+        "sacchett\\w* (di |in )?plastica", "plastiksack\\w*", "plastiktut\\w*", "pellicol\\w*", "folie\\w*", "cellophane", "zellophan\\w*",
+        "vaschett\\w*", "vasett\\w* (dello |del |di )?yogurt", "joghurtbecher\\w*", "polistirolo", "styropor\\w*",
+        "imballagg\\w* (di |in )?plastica", "verpackung\\w*"
       ]
     },
     {
       "id": "raee",
+      "ref": "Art. 18, 22",
       "name": { "it": "Elettronici (RAEE)", "de": "Elektroaltgeräte" },
-      "bin": { "it": "Centro di riciclaggio", "de": "Recyclinghof" },
+      "bin": { "it": "Centro di raccolta", "de": "Recyclinghof" },
       "color": "#7c3aed",
       "instructions": {
-        "it": "Va portato al centro di riciclaggio. I piccoli apparecchi si possono anche restituire nei negozi di elettronica.",
-        "de": "Bitte im Recyclinghof abgeben. Kleingeräte können auch im Elektrohandel zurückgegeben werden."
+        "it": "Va portato al centro di raccolta (Recyclinghof).",
+        "de": "Bitte im Recyclinghof abgeben."
       },
       "points": { "kinds": ["centre"], "materials": ["small_appliances", "electrical_appliances", "electrical_items", "mobile_phones", "computers"] },
       "patterns": [
@@ -110,7 +147,7 @@
         "computer\\w*", "laptop\\w*", "notebook\\w*", "portatil\\w*", "tablet\\b", "pc\\b",
         "televis\\w*", "tv\\b", "fernseher\\w*", "monitor\\w*",
         "frigo\\w*", "kuhlschrank\\w*", "lavatric\\w*", "waschmaschine\\w*", "lavastovigli\\w*", "geschirrspuler\\w*",
-        "phon\\b", "fohn\\w*", "asciugacapell\\w*", "telecomand\\w*", "fernbedienung\\w*","microonde", "mikrowelle\\w*", "tostapane", "toaster\\w*",
+        "phon\\b", "fohn\\w*", "asciugacapell\\w*", "telecomand\\w*", "fernbedienung\\w*", "microonde", "mikrowelle\\w*", "tostapane", "toaster\\w*",
         "elettrodomestic\\w*", "elektroger\\w*", "elettronic\\w*", "elektronik\\w*",
         "caricabatteri\\w*", "ladegerat\\w*", "cav[oi]\\b", "kabel\\w*", "stampant\\w*", "drucker\\w*",
         "lampadin\\w*", "neon\\b", "energiesparlamp\\w*", "led\\b"
@@ -118,12 +155,13 @@
     },
     {
       "id": "pile",
+      "ref": "Art. 20.2c",
       "name": { "it": "Pile e batterie", "de": "Batterien" },
-      "bin": { "it": "Contenitori per pile", "de": "Batteriesammelbehälter" },
+      "bin": { "it": "Contenitori per pile / centro di raccolta", "de": "Batteriesammelbehälter / Recyclinghof" },
       "color": "#dc2626",
       "instructions": {
-        "it": "Vanno negli appositi contenitori presenti in molti negozi e supermercati, oppure al centro di riciclaggio.",
-        "de": "Gehören in die Sammelbehälter in vielen Geschäften und Supermärkten oder in den Recyclinghof."
+        "it": "Vanno negli appositi contenitori per pile o al centro di raccolta.",
+        "de": "Gehören in die eigens dafür vorgesehenen Batteriebehälter oder in den Recyclinghof."
       },
       "points": { "kinds": ["centre"], "materials": ["batteries"] },
       "patterns": [
@@ -132,12 +170,13 @@
     },
     {
       "id": "farmaci",
-      "name": { "it": "Farmaci scaduti", "de": "Altmedikamente" },
+      "ref": "Art. 20.2d",
+      "name": { "it": "Farmaci", "de": "Arzneimittel" },
       "bin": { "it": "Contenitori nelle farmacie", "de": "Sammelbehälter in Apotheken" },
       "color": "#0891b2",
       "instructions": {
-        "it": "I farmaci scaduti vanno nei contenitori delle farmacie. Le scatole di carta e i foglietti vanno nella carta.",
-        "de": "Abgelaufene Medikamente in die Sammelbehälter der Apotheken. Schachteln und Beipackzettel ins Altpapier."
+        "it": "I farmaci vanno negli appositi contenitori presso le farmacie. Le scatole di carta e i foglietti illustrativi vanno nella carta.",
+        "de": "Arzneimittel gehören in die eigens dafür vorgesehenen Behälter in den Apotheken. Schachteln und Beipackzettel ins Altpapier."
       },
       "points": { "kinds": ["pharmacy"], "materials": ["drugs", "medicine"] },
       "patterns": [
@@ -147,12 +186,13 @@
     },
     {
       "id": "ingombranti",
+      "ref": "Art. 17",
       "name": { "it": "Ingombranti", "de": "Sperrmüll" },
-      "bin": { "it": "Centro di riciclaggio", "de": "Recyclinghof" },
+      "bin": { "it": "Centro di raccolta / ritiro a domicilio", "de": "Recyclinghof / Abholdienst" },
       "color": "#78716c",
       "instructions": {
-        "it": "Va portato al centro di riciclaggio. Per oggetti molto grandi puoi prenotare il ritiro a domicilio presso SEAB.",
-        "de": "Bitte im Recyclinghof abgeben. Für sehr große Gegenstände kann bei der SEAB eine Abholung gebucht werden."
+        "it": "Sono ingombranti i rifiuti più grandi di 40x40 cm (es. mobili, materassi). Portali al centro di raccolta oppure prenota il ritiro a domicilio a pagamento presso il Gestore (SEAB): andranno lasciati a bordo strada solo nel giorno e nell'orario concordati.",
+        "de": "Sperrmüll sind Abfälle, die größer als 40x40 cm sind (z. B. Möbel, Matratzen). Im Recyclinghof abgeben oder den kostenpflichtigen Abholdienst beim Betreiber (SEAB) buchen: nur am vereinbarten Tag und zur vereinbarten Uhrzeit an den Straßenrand stellen."
       },
       "points": { "kinds": ["centre"], "materials": [] },
       "patterns": [
@@ -162,13 +202,31 @@
       ]
     },
     {
+      "id": "inerti",
+      "ref": "Art. 19",
+      "name": { "it": "Inerti e ceramica", "de": "Bauabfälle und Keramik" },
+      "bin": { "it": "Centro di raccolta", "de": "Recyclinghof" },
+      "color": "#a8a29e",
+      "instructions": {
+        "it": "Scarti di piccoli lavori fatti da te in casa (materiali da costruzione, piastrelle, lavandini, sanitari e altra ceramica) vanno al centro di raccolta, nei limiti previsti dal suo regolamento e solo se privi di sostanze pericolose. Mai nei contenitori.",
+        "de": "Abfälle aus kleinen, selbst durchgeführten Arbeiten (Bauabfälle, Fliesen, Waschbecken, Sanitärkeramik und andere Keramik) im Recyclinghof abgeben, im Rahmen der dort geltenden Mengen und nur, wenn sie frei von gefährlichen Stoffen sind. Niemals in die Tonnen."
+      },
+      "points": { "kinds": ["centre"], "materials": ["rubble"] },
+      "patterns": [
+        "inert\\w*", "macerie", "calcinacc\\w*", "mattoni?\\b", "piastrell\\w*", "lavandin\\w*", "sanitar\\w*", "water\\b", "wc\\b",
+        "ceramic\\w*", "porcellan\\w*", "cemento", "intonac\\w*", "cartongesso",
+        "bauabfall\\w*", "bauschutt\\w*", "ziegel\\w*", "fliese\\w*", "waschbecken\\w*", "keramik\\w*", "porzellan\\w*", "zement\\w*", "gips\\w*"
+      ]
+    },
+    {
       "id": "pericolosi",
-      "name": { "it": "Rifiuti pericolosi", "de": "Problemstoffe" },
-      "bin": { "it": "Centro di riciclaggio / raccolta mobile", "de": "Recyclinghof / mobile Sammlung" },
+      "ref": "Art. 20",
+      "name": { "it": "Rifiuti pericolosi", "de": "Gefährliche Abfälle" },
+      "bin": { "it": "Centro di raccolta / raccolta mobile", "de": "Recyclinghof / mobile Sammelstelle" },
       "color": "#ea580c",
       "instructions": {
-        "it": "Va consegnato al centro di riciclaggio o alla raccolta mobile dei rifiuti pericolosi. Non mischiarlo con altri rifiuti.",
-        "de": "Bitte im Recyclinghof oder bei der mobilen Problemstoffsammlung abgeben. Nicht mit anderem Müll mischen."
+        "it": "Va consegnato al centro di raccolta (negli appositi contenitori) o ai punti di raccolta mobili secondo il calendario del Gestore. Mai nei contenitori stradali o nel residuo.",
+        "de": "Im Recyclinghof (in den eigens gekennzeichneten Behältern) oder bei den mobilen Sammelstellen laut Terminkalender des Betreibers abgeben. Niemals in Straßencontainer oder Restmüll."
       },
       "points": { "kinds": ["centre"], "materials": ["hazardous_waste", "paint"] },
       "patterns": [
@@ -180,12 +238,13 @@
     },
     {
       "id": "olio",
-      "name": { "it": "Olio da cucina", "de": "Speiseöl und -fett" },
-      "bin": { "it": "Centro di riciclaggio / contenitori olio", "de": "Recyclinghof / Altölbehälter" },
+      "ref": "Art. 10, 20",
+      "name": { "it": "Olio da cucina usato", "de": "Altöl aus dem Haushalt" },
+      "bin": { "it": "Centro di raccolta", "de": "Recyclinghof" },
       "color": "#ca8a04",
       "instructions": {
-        "it": "Raccogli l'olio usato in una bottiglia chiusa e portalo al centro di riciclaggio. Mai nel lavandino.",
-        "de": "Altes Speiseöl in einer verschlossenen Flasche sammeln und im Recyclinghof abgeben. Niemals in den Abfluss."
+        "it": "Raccogli l'olio usato in una bottiglia chiusa e portalo al centro di raccolta. Mai nel lavandino né nei contenitori (vietato conferire liquidi).",
+        "de": "Altes Speiseöl in einer verschlossenen Flasche sammeln und im Recyclinghof abgeben. Niemals in den Abfluss oder in die Tonnen (Flüssigkeiten sind verboten)."
       },
       "points": { "kinds": ["centre"], "materials": ["cooking_oil"] },
       "patterns": [
@@ -195,32 +254,34 @@
     },
     {
       "id": "abiti",
+      "ref": null,
       "name": { "it": "Abiti e scarpe usati", "de": "Altkleider und Schuhe" },
-      "bin": { "it": "Contenitori per abiti usati", "de": "Altkleidercontainer" },
+      "bin": { "it": "Contenitori per abiti usati / centro di raccolta", "de": "Altkleidercontainer / Recyclinghof" },
       "color": "#db2777",
       "instructions": {
-        "it": "Se in buono stato, mettili in un sacchetto chiuso nei contenitori per abiti usati. Le scarpe vanno legate a coppie.",
-        "de": "Wenn noch tragbar, in einem verschlossenen Sack in den Altkleidercontainer. Schuhe paarweise zusammenbinden."
+        "it": "Se in buono stato, mettili in un sacchetto chiuso nei contenitori per abiti usati o portali al centro di raccolta. Stracci e ritagli di tessuto vanno nel residuo.",
+        "de": "Wenn noch tragbar, in einem verschlossenen Sack in den Altkleidercontainer oder in den Recyclinghof. Lumpen und Stoffreste gehören in den Restmüll."
       },
       "points": { "kinds": [], "materials": ["clothes", "shoes"] },
       "patterns": [
         "vestit\\w*", "abit[oi]\\b", "indument\\w*", "magliett\\w*", "pantalon\\w*", "giacc\\w*",
-        "scarp\\w*", "kleid\\w*", "kleidung\\w*", "textil\\w*", "schuh\\w*", "hose\\w*", "jacke\\w*", "tessut\\w*"
+        "scarp\\w*", "kleid\\w*", "kleidung\\w*", "textil\\w*", "schuh\\w*", "hose\\w*", "jacke\\w*"
       ]
     },
     {
       "id": "verde",
-      "name": { "it": "Sfalci e potature", "de": "Grünschnitt" },
-      "bin": { "it": "Centro di riciclaggio", "de": "Recyclinghof" },
+      "ref": "Art. 12",
+      "name": { "it": "Scarti verdi (giardino)", "de": "Gartenabfälle" },
+      "bin": { "it": "Centro di raccolta / contenitore stradale / ritiro porta a porta", "de": "Recyclinghof / Straßencontainer / Abholdienst" },
       "color": "#65a30d",
       "instructions": {
-        "it": "Erba, foglie e rami vanno portati al centro di riciclaggio. Piccole quantità di fiori e foglie possono andare nell'organico.",
-        "de": "Gras, Laub und Äste bitte im Recyclinghof abgeben. Kleine Mengen Blumen und Laub dürfen in den Biomüll."
+        "it": "Sfalci, potature, ramaglie e foglie vanno al centro di raccolta, nei contenitori stradali per il verde o tramite il servizio di ritiro porta a porta.",
+        "de": "Gras-, Baum- und Strauchschnitt sowie Laub im Recyclinghof, in den Straßencontainern für Grünabfälle oder über den Abholdienst entsorgen."
       },
       "points": { "kinds": ["centre"], "materials": ["green_waste"] },
       "patterns": [
-        "erba\\b", "sfalc\\w*", "fogli[ae]\\b", "potatur\\w*", "ram[io]\\b", "rasen\\w*", "gras\\b",
-        "laub\\w*", "aste\\b", "strauchschnitt\\w*", "grunschnitt\\w*", "gartenabfall\\w*"
+        "erba\\b", "sfalc\\w*", "fogli[ae]\\b", "potatur\\w*", "ram[io]\\b", "ramagli\\w*", "rasen\\w*", "gras\\b",
+        "laub\\w*", "aste\\b", "strauchschnitt\\w*", "baumschnitt\\w*", "grunschnitt\\w*", "gartenabfall\\w*"
       ]
     }
   ]

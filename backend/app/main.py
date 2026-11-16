@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 
 from . import classifier, config, points
 from .ratelimit import RateLimiter
-from .rules import CATEGORIES, MUNICIPALITY, localized
+from .rules import CATEGORIES, MUNICIPALITY, SOURCE, localized, localized_notes
 
 Lang = Literal["it", "de"]
 
@@ -52,6 +52,19 @@ class Category(BaseModel):
     color: str
     instructions: str
     has_points: bool
+    ref: str | None = Field(None, description="Articolo del regolamento comunale, es. 'Art. 16'")
+
+
+class Note(BaseModel):
+    id: str
+    text: str
+    ref: str | None
+
+
+class Info(BaseModel):
+    municipality: str
+    source: str | None
+    notes: list[Note]
 
 
 class Point(BaseModel):
@@ -86,6 +99,12 @@ def health():
         "ai_enabled": config.AI_ENABLED,
         "points_count": points.count(),
     }
+
+
+@app.get("/api/info", response_model=Info)
+def info(lang: Lang = "it"):
+    """Fonte delle regole e note generali (residenza, multe per abbandono, ...)."""
+    return {"municipality": MUNICIPALITY, "source": SOURCE, "notes": localized_notes(lang)}
 
 
 @app.get("/api/categories", response_model=list[Category])

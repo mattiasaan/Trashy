@@ -9,6 +9,8 @@ with open(RULES_PATH, encoding="utf-8") as f:
     _data = json.load(f)
 
 MUNICIPALITY = _data["municipality"]
+SOURCE = _data.get("source")
+NOTES = _data.get("notes", [])
 CATEGORIES = {c["id"]: c for c in _data["categories"]}
 PATTERNS = {
     cid: [re.compile(p) for p in c["patterns"]] for cid, c in CATEGORIES.items()
@@ -32,4 +34,9 @@ def localized(category_id: str, lang: str) -> dict:
         "color": c["color"],
         "instructions": c["instructions"][lang],
         "has_points": c["points"] is not None,
+        "ref": c.get("ref"),
     }
+
+
+def localized_notes(lang: str) -> list[dict]:
+    return [{"id": n["id"], "text": n[lang], "ref": n.get("ref")} for n in NOTES]
