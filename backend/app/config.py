@@ -13,12 +13,13 @@ DB_PATH = BASE_DIR / os.getenv("DB_FILE", "data/trashy.db")
 AI_ENABLED = os.getenv("AI_ENABLED", "false").lower() == "true"
 AI_BASE_URL = os.getenv("AI_BASE_URL") or None  # None = OpenAI ufficiale
 AI_API_KEY = os.getenv("AI_API_KEY", "not-needed")
-AI_MODEL = os.getenv("AI_MODEL", "gemini-2.5-flash")
+AI_MODEL = os.getenv("AI_MODEL", "gemini-3.8-flash")
 AI_TIMEOUT = float(os.getenv("AI_TIMEOUT", "15"))
 # false = prima le regex, l'AI solo se le regex non trovano nulla (risparmia quota)
 AI_FIRST = os.getenv("AI_FIRST", "false").lower() == "true"
-AI_MAX_TOKENS = int(os.getenv("AI_MAX_TOKENS", "300"))
-# Vuoto = non inviato. Gemini 2.5 Flash: "none" (niente ragionamento, più veloce ed economico)
+# Con Gemini include anche i token di ragionamento: troppo basso -> risposta vuota o troncata
+AI_MAX_TOKENS = int(os.getenv("AI_MAX_TOKENS", "1000"))
+# Vuoto = non inviato. Gemini 3: "low" (il ragionamento non si può disattivare, "none" dà errore 400)
 AI_REASONING_EFFORT = os.getenv("AI_REASONING_EFFORT") or None
 # Tetto globale di chiamate AI al giorno (tutti gli utenti insieme). Superato -> solo regex
 AI_DAILY_LIMIT = int(os.getenv("AI_DAILY_LIMIT", "200"))
