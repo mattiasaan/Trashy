@@ -47,8 +47,9 @@ Google AI Studio (tier gratuito, chiave da https://aistudio.google.com/apikey):
 AI_ENABLED=true
 AI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
 AI_API_KEY=<la tua chiave>
-AI_MODEL=gemini-2.5-flash
-AI_REASONING_EFFORT=none
+AI_MODEL=gemini-3.8-flash        # gemini-2.5-flash non è più disponibile per le chiavi nuove
+AI_REASONING_EFFORT=low          # Gemini 3 non accetta "none"
+AI_MAX_TOKENS=1000               # include i token di ragionamento
 AI_DAILY_LIMIT=200      # tienilo sotto la quota giornaliera mostrata in AI Studio
 ```
 Note: le quote gratuite cambiano spesso (controllale in AI Studio). Nel tier gratuito Google può usare

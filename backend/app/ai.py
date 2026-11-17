@@ -120,7 +120,8 @@ def _explain_status(code: int) -> str:
              "(es. AI_REASONING_EFFORT su un modello che non lo accetta)",
         401: "chiave API non valida",
         403: "chiave senza permessi: API 'Generative Language' non abilitata o chiave limitata ad altre API/IP",
-        404: "modello inesistente o AI_BASE_URL sbagliato (deve finire con /v1beta/openai/)",
+        404: "modello inesistente/dismesso (cambia AI_MODEL, il nome giusto è nei dettagli) "
+             "o AI_BASE_URL sbagliato (deve finire con /v1beta/openai/)",
         429: "quota del piano gratuito esaurita (al minuto o al giorno): controlla i limiti in AI Studio",
         500: "errore interno di Google, riprova",
         503: "modello sovraccarico, riprova più tardi",
@@ -202,7 +203,7 @@ def classify(text: str, ip: str = "unknown") -> dict | None:
         log.debug("AI: contenuto grezzo: %r", content)
         if choice.finish_reason == "length":
             log.warning("AI: risposta troncata (finish_reason=length): aumenta AI_MAX_TOKENS "
-                        "o imposta AI_REASONING_EFFORT=none")
+                        "(con Gemini comprende i token di ragionamento) o abbassa AI_REASONING_EFFORT")
         if not content.strip():
             raise ValueError(f"risposta vuota (finish_reason={choice.finish_reason})")
         match = re.search(r"\{.*\}", content, re.DOTALL)
