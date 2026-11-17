@@ -20,6 +20,7 @@ QUERY = """
 area["ISO3166-2"="IT-BZ"]->.a;
 (
   nwr["amenity"="recycling"](area.a);
+  nwr["amenity"="waste_basket"](area.a);
   nwr["amenity"="pharmacy"](area.a);
 );
 out center tags;
@@ -47,6 +48,8 @@ def to_row(el: dict) -> tuple | None:
 
     if tags.get("amenity") == "pharmacy":
         kind = "pharmacy"
+    elif tags.get("amenity") == "waste_basket":
+        kind = "waste_basket"
     elif tags.get("recycling_type") == "centre":
         kind = "centre"
     else:

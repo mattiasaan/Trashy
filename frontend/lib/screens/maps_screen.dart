@@ -7,11 +7,10 @@ import 'package:url_launcher/url_launcher.dart';
 import '../themes/app_colors.dart';
 import 'add_marker_screen.dart';
 
-// Modello per le singole campane che compongono un'isola ecologica
 class EcoBinItem {
-  final String category; // Es. Vetro, Carta, Plastica
-  final String allowedItems; // Es. Bottiglie, barattoli, flaconi
-  final String imageUrl; // URL o asset dell'immagine della campana
+  final String category; 
+  final String allowedItems;
+  final String imageUrl;
 
   EcoBinItem({
     required this.category,
@@ -23,11 +22,11 @@ class EcoBinItem {
 class EcoPoint {
   final String id;
   final String title;
-  final String type; // 'island', 'bell', 'bin'
+  final String type; // 'disposal_center', 'island', 'bin', 'pharmacy'
   final LatLng location;
   final String description;
   bool isFull;
-  final List<EcoBinItem> bins; // Lista delle campane presenti in questa isola
+  final List<EcoBinItem> bins;
 
   EcoPoint({
     required this.id,
@@ -62,78 +61,100 @@ class _MapsScreenState extends State<MapsScreen> with SingleTickerProviderStateM
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
 
+  // Lista iniziale con Centro di smaltimento, Isole ecologiche, Cestini e Farmacia (Raccolta Medicinali)
   final List<EcoPoint> _ecoPoints = [
+    // 1 Centro di Smaltimento principale
     EcoPoint(
-      id: '1',
-      title: 'Isola Ecologica Centrale',
-      type: 'island',
+      id: 'disp_1',
+      title: 'Centro di Smaltimento Principale',
+      type: 'disposal_center',
       location: const LatLng(46.4990, 11.3560),
-      description: 'Raccolta differenziata completa, ingombranti e RAEE.',
+      description: 'Centro di raccolta comunale per tutti i tipi di materiali e rifiuti ingombranti.',
       bins: [
         EcoBinItem(
-          category: 'Vetro',
-          allowedItems: 'Bottiglie, bicchieri, vasetti di vetro, barattoli.',
+          category: 'Campana del Vetro',
+          allowedItems: 'Bottiglie, vasetti e barattoli di vetro.',
           imageUrl: 'https://images.unsplash.com/photo-1595278069441-2cf29f8005a4?auto=format&fit=crop&w=300&q=80',
         ),
         EcoBinItem(
-          category: 'Carta e Cartone',
-          allowedItems: 'Giornali, riviste, scatoloni piegati, quaderni.',
+          category: 'Campana della Carta',
+          allowedItems: 'Giornali, riviste, cartoni piegati.',
           imageUrl: 'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&w=300&q=80',
         ),
-        EcoBinItem(
-          category: 'Plastica e Lattine',
-          allowedItems: 'Bottiglie in PET, flaconi detersivi, lattine in alluminio.',
-          imageUrl: 'https://images.unsplash.com/photo-1611284416318-3905eca149d3?auto=format&fit=crop&w=300&q=80',
-        ),
       ],
     ),
+
+    // 3 Isole Ecologiche
     EcoPoint(
-      id: '2',
-      title: 'Campana Vetro & Carta',
-      type: 'bell',
-      location: const LatLng(46.4965, 11.3520),
-      description: 'Campana dedicata esclusivamente a vetro e carta.',
+      id: 'island_1',
+      title: 'Isola Ecologica Quartiere Nord',
+      type: 'island',
+      location: const LatLng(46.5020, 11.3510),
+      description: 'Isola ecologica di zona per la differenziata di base.',
       bins: [
         EcoBinItem(
-          category: 'Vetro',
-          allowedItems: 'Solo bottiglie e barattoli in vetro.',
+          category: 'Campana del Vetro',
+          allowedItems: 'Bottiglie e barattoli in vetro.',
           imageUrl: 'https://images.unsplash.com/photo-1595278069441-2cf29f8005a4?auto=format&fit=crop&w=300&q=80',
         ),
       ],
     ),
     EcoPoint(
-      id: '3',
-      title: 'Cestino Pubblico Smart',
-      type: 'bin',
-      location: const LatLng(46.5005, 11.3535),
-      description: 'Cestino urbano per indifferenziata.',
+      id: 'island_2',
+      title: 'Isola Ecologica Centro',
+      type: 'island',
+      location: const LatLng(46.4965, 11.3520),
+      description: 'Isola ecologica di zona aperta H24.',
       bins: [
         EcoBinItem(
-          category: 'Indifferenziata',
-          allowedItems: 'Rifiuti non riciclabili.',
-          imageUrl: 'https://images.unsplash.com/photo-1530587191325-3db32d826c18?auto=format&fit=crop&w=300&q=80',
+          category: 'Campana della Carta',
+          allowedItems: 'Carta e cartone.',
+          imageUrl: 'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&w=300&q=80',
         ),
       ],
     ),
     EcoPoint(
-      id: '4',
-      title: 'Isola Ecologica Quartiere',
+      id: 'island_3',
+      title: 'Isola Ecologica Sud',
       type: 'island',
-      location: const LatLng(46.4950, 11.3580),
-      description: 'Punto di raccolta di quartiere aperto H24.',
+      location: const LatLng(46.4940, 11.3590),
+      description: 'Punto di raccolta multimateriale.',
       bins: [
         EcoBinItem(
-          category: 'Organico',
-          allowedItems: 'Scarti di cucina, avanzi di cibo, bucce.',
-          imageUrl: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=300&q=80',
-        ),
-        EcoBinItem(
-          category: 'Plastica',
-          allowedItems: 'Imballaggi, vaschette, borse di plastica.',
+          category: 'Campana della Plastica',
+          allowedItems: 'Imballaggi in plastica.',
           imageUrl: 'https://images.unsplash.com/photo-1611284416318-3905eca149d3?auto=format&fit=crop&w=300&q=80',
         ),
       ],
     ),
+
+    // 1 Punto di raccolta medicinali (Farmacia)
+    EcoPoint(
+      id: 'pharmacy_1',
+      title: 'Farmacia Comunale - Raccolta Medicinali',
+      type: 'pharmacy',
+      location: const LatLng(46.4975, 11.3540),
+      description: 'Contenitore dedicato allo smaltimento sicuro di medicinali scaduti o scarti di farmaci.',
+      bins: [
+        EcoBinItem(
+          category: 'Contenitore Farmaci Scaduti',
+          allowedItems: 'Compresse, sciroppi, flaconi e pomate scaduti (senza scatola di cartone esterna).',
+          imageUrl: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=300&q=80',
+        ),
+      ],
+    ),
+
+    // 10 Cestini Pubblici
+    EcoPoint(id: 'bin_1', title: 'Cestino Via Roma 1', type: 'bin', location: const LatLng(46.4980, 11.3530), description: 'Cestino urbano.'),
+    EcoPoint(id: 'bin_2', title: 'Cestino Via Roma 12', type: 'bin', location: const LatLng(46.4983, 11.3535), description: 'Cestino urbano.'),
+    EcoPoint(id: 'bin_3', title: 'Cestino Piazza Walther', type: 'bin', location: const LatLng(46.4995, 11.3542), description: 'Cestino urbano.'),
+    EcoPoint(id: 'bin_4', title: 'Cestino Via Portici', type: 'bin', location: const LatLng(46.4970, 11.3548), description: 'Cestino urbano.'),
+    EcoPoint(id: 'bin_5', title: 'Cestino Via Museo', type: 'bin', location: const LatLng(46.5001, 11.3520), description: 'Cestino urbano.'),
+    EcoPoint(id: 'bin_6', title: 'Cestino Lungo Talvera', type: 'bin', location: const LatLng(46.5015, 11.3530), description: 'Cestino urbano.'),
+    EcoPoint(id: 'bin_7', title: 'Cestino Via Cappuccini', type: 'bin', location: const LatLng(46.4950, 11.3560), description: 'Cestino urbano.'),
+    EcoPoint(id: 'bin_8', title: 'Cestino Viale Trento', type: 'bin', location: const LatLng(46.4935, 11.3525), description: 'Cestino urbano.'),
+    EcoPoint(id: 'bin_9', title: 'Cestino Via Torino', type: 'bin', location: const LatLng(46.4915, 11.3540), description: 'Cestino urbano.'),
+    EcoPoint(id: 'bin_10', title: 'Cestino Corso Italia', type: 'bin', location: const LatLng(46.4955, 11.3485), description: 'Cestino urbano.'),
   ];
 
   @override
@@ -172,32 +193,39 @@ class _MapsScreenState extends State<MapsScreen> with SingleTickerProviderStateM
     }).toList();
   }
 
+  // Configurazione dei colori e icone per le categorie supportate
   Map<String, dynamic> _getMarkerStyle(EcoPoint point, bool isDark) {
     if (point.isFull) {
       return {
-        'color': Colors.grey,
+        'color': Colors.grey.shade700,
         'icon': Icons.block,
         'label': 'Punto Pieno / Colmo',
       };
     }
 
     switch (point.type) {
+      case 'disposal_center':
+        return {
+          'color': const Color(0xFF795548), // Marrone
+          'icon': Icons.recycling,
+          'label': 'Centro di Smaltimento',
+        };
       case 'island':
         return {
-          'color': isDark ? AuraColors.primaryGreenDark : AuraColors.primaryGreen,
+          'color': isDark ? AuraColors.primaryGreenDark : AuraColors.primaryGreen, // Verde
           'icon': Icons.recycling,
           'label': 'Isola Ecologica',
         };
-      case 'bell':
+      case 'pharmacy':
         return {
-          'color': Colors.blueAccent,
-          'icon': Icons.wine_bar,
-          'label': 'Campana (Vetro/Carta)',
+          'color': Colors.blueAccent, // Blu per le farmacie / raccolta medicinali
+          'icon': Icons.local_pharmacy,
+          'label': 'Raccolta Medicinali',
         };
       case 'bin':
       default:
         return {
-          'color': isDark ? AuraColors.accentCottoDark : AuraColors.accentCotto,
+          'color': Colors.grey, // Grigio
           'icon': Icons.delete_outline,
           'label': 'Cestino Pubblico',
         };
@@ -226,7 +254,6 @@ class _MapsScreenState extends State<MapsScreen> with SingleTickerProviderStateM
     }
   }
 
-  // Dialog per argomentare la segnalazione
   void _showReportDialog(EcoPoint point, bool isFullReport) {
     final TextEditingController reportTitleController = TextEditingController(
       text: isFullReport ? 'Segnalazione contenitore pieno' : 'Segnalazione rimozione punto',
@@ -315,7 +342,6 @@ class _MapsScreenState extends State<MapsScreen> with SingleTickerProviderStateM
     );
   }
 
-  // Pannello dettagliato con layout a box orizzontali per ogni campana
   void _showMarkerDetailsSheet(EcoPoint point) {
     setState(() {
       _selectedPoint = point;
@@ -432,10 +458,10 @@ class _MapsScreenState extends State<MapsScreen> with SingleTickerProviderStateM
                     ),
                     const SizedBox(height: 20),
 
-                    // --- SEZIONE BOX CAMPANE DELL'ISOLA ECOLOGICA ---
+                    // --- SEZIONE BOX CASSONETTI / CAMPANE DELL'AREA ---
                     if (point.bins.isNotEmpty) ...[
                       Text(
-                        'Campane e Contenitori Disponibili:',
+                        'Tipologie di Cassonetti e Campane:',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -456,7 +482,6 @@ class _MapsScreenState extends State<MapsScreen> with SingleTickerProviderStateM
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Immagine della campana
                             ClipRRect(
                               borderRadius: BorderRadius.circular(12),
                               child: Image.network(
@@ -473,7 +498,6 @@ class _MapsScreenState extends State<MapsScreen> with SingleTickerProviderStateM
                               ),
                             ),
                             const SizedBox(width: 14),
-                            // Dettagli categoria e prodotti
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -488,7 +512,7 @@ class _MapsScreenState extends State<MapsScreen> with SingleTickerProviderStateM
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    'Cosa buttare: ${bin.allowedItems}',
+                                    'Cosa conferire: ${bin.allowedItems}',
                                     style: TextStyle(
                                       fontSize: 13,
                                       color: isDark ? AuraColors.textMutedDark : AuraColors.textMuted,
@@ -503,7 +527,7 @@ class _MapsScreenState extends State<MapsScreen> with SingleTickerProviderStateM
                       const SizedBox(height: 10),
                     ],
 
-                    // Sezione Segnalazioni (Pieno / Non esiste)
+                    // Sezione Segnalazioni
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
@@ -654,13 +678,13 @@ class _MapsScreenState extends State<MapsScreen> with SingleTickerProviderStateM
         final newPoint = EcoPoint(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
           title: result['title'],
-          type: result['type'],
+          type: result['type'], // 'disposal_center', 'island', 'bin', o 'pharmacy'
           location: result['location'],
           description: result['description'],
           bins: [
             EcoBinItem(
               category: 'Generale',
-              allowedItems: 'Conforme alla categoria selezionata.',
+              allowedItems: 'Conforme alla categoria del punto.',
               imageUrl: 'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&w=300&q=80',
             ),
           ],
@@ -751,6 +775,8 @@ class _MapsScreenState extends State<MapsScreen> with SingleTickerProviderStateM
                         },
                       ),
                     ),
+
+                  // Rendering pulito dei marker principali
                   ..._filteredPoints.map((point) {
                     final style = _getMarkerStyle(point, isDark);
                     final isSelected = _selectedPoint?.id == point.id;
@@ -792,7 +818,7 @@ class _MapsScreenState extends State<MapsScreen> with SingleTickerProviderStateM
             ],
           ),
 
-          // Search bar e filtri superiori
+          // Search bar e filtri superiori aggiornati
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
@@ -818,7 +844,7 @@ class _MapsScreenState extends State<MapsScreen> with SingleTickerProviderStateM
                         color: isDark ? AuraColors.textMainDark : AuraColors.textMain,
                       ),
                       decoration: InputDecoration(
-                        hintText: 'Cerca isole, campane o cestini...',
+                        hintText: 'Cerca centri, isole, farmacie o cestini...',
                         hintStyle: TextStyle(color: mutedColor),
                         icon: Icon(Icons.search, color: mutedColor),
                         border: InputBorder.none,
@@ -834,9 +860,11 @@ class _MapsScreenState extends State<MapsScreen> with SingleTickerProviderStateM
                       children: [
                         _buildFilterChip('Tutti', 'all', isDark),
                         const SizedBox(width: 8),
+                        _buildFilterChip('Centro Smaltimento', 'disposal_center', isDark),
+                        const SizedBox(width: 8),
                         _buildFilterChip('Isole Ecologiche', 'island', isDark),
                         const SizedBox(width: 8),
-                        _buildFilterChip('Campane', 'bell', isDark),
+                        _buildFilterChip('Farmacie (Medicinali)', 'pharmacy', isDark),
                         const SizedBox(width: 8),
                         _buildFilterChip('Cestini', 'bin', isDark),
                       ],
