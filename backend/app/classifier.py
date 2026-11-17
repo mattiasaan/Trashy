@@ -1,6 +1,10 @@
 """Riconosce la lingua e la categoria di rifiuto da un testo libero."""
+import logging
+
 from . import ai, config
 from .rules import PATTERNS, normalize
+
+log = logging.getLogger(__name__)
 
 _STOPWORDS = {
     "it": {"il", "lo", "la", "le", "gli", "dove", "come", "butto", "buttare", "di", "che",
@@ -41,8 +45,17 @@ def classify(text: str, ip: str = "unknown") -> dict:
     Con AI_FIRST=true l'AI viene chiamata sempre. Se l'AI fallisce si usano le regex.
     """
     regex = classify_regex(text)
-    if config.AI_ENABLED and (config.AI_FIRST or regex["category"] is None):
+    log.info("Domanda da %s: %r -> regex: %s", ip, text, regex["category"])
+
+    if not config.AI_ENABLED:
+        log.info("AI non chiamata: AI_ENABLED=false -> rispondo con le regex")
+    elif not config.AI_FIRST and regex["category"] is not None:
+        log.info("AI non chiamata: le regex hanno trovato '%s' e AI_FIRST=false "
+                 "(metti AI_FIRST=true per usare sempre l'AI)", regex["category"])
+    else:
         result = ai.classify(text, ip)
         if result is not None:
+            log.info("Risposta AI: categoria=%s item=%r", result["category"], result["item"])
             return {**result, "source": "ai"}
+        log.info("AI fallita o non disponibile -> rispondo con le regex (%s)", regex["category"])
     return {**regex, "source": "regex"}

@@ -36,3 +36,16 @@ DOCS_ENABLED = os.getenv("DOCS_ENABLED", "false").lower() == "true"
 # true SOLO se il server è raggiungibile esclusivamente tramite Cloudflare (Tunnel su 127.0.0.1):
 # usa l'header CF-Connecting-IP (impostato da Cloudflare, non falsificabile dal client) come IP reale
 TRUST_CF_CONNECTING_IP = os.getenv("TRUST_CF_CONNECTING_IP", "false").lower() == "true"
+
+# Livello dei log dell'app: DEBUG (mostra anche la risposta grezza dell'AI), INFO, WARNING
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+# true = /api/health mostra lo stato dell'AI (modello, ultimo errore). Attivo anche con DOCS_ENABLED=true
+AI_DEBUG = os.getenv("AI_DEBUG", "false").lower() == "true"
+
+
+def masked_key() -> str:
+    """Chiave API per i log: mai in chiaro, solo lunghezza e ultime 4 cifre."""
+    k = AI_API_KEY.strip()
+    if not k or k == "not-needed":
+        return "<VUOTA>"
+    return f"...{k[-4:]} ({len(k)} caratteri)"
