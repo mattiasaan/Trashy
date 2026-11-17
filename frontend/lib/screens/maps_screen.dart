@@ -7,12 +7,27 @@ import 'package:url_launcher/url_launcher.dart';
 import '../themes/app_colors.dart';
 import 'add_marker_screen.dart';
 
+// Modello per le singole campane che compongono un'isola ecologica
+class EcoBinItem {
+  final String category; // Es. Vetro, Carta, Plastica
+  final String allowedItems; // Es. Bottiglie, barattoli, flaconi
+  final String imageUrl; // URL o asset dell'immagine della campana
+
+  EcoBinItem({
+    required this.category,
+    required this.allowedItems,
+    required this.imageUrl,
+  });
+}
+
 class EcoPoint {
   final String id;
   final String title;
   final String type; // 'island', 'bell', 'bin'
   final LatLng location;
   final String description;
+  bool isFull;
+  final List<EcoBinItem> bins; // Lista delle campane presenti in questa isola
 
   EcoPoint({
     required this.id,
@@ -20,6 +35,8 @@ class EcoPoint {
     required this.type,
     required this.location,
     required this.description,
+    this.isFull = false,
+    this.bins = const [],
   });
 }
 
@@ -52,6 +69,23 @@ class _MapsScreenState extends State<MapsScreen> with SingleTickerProviderStateM
       type: 'island',
       location: const LatLng(46.4990, 11.3560),
       description: 'Raccolta differenziata completa, ingombranti e RAEE.',
+      bins: [
+        EcoBinItem(
+          category: 'Vetro',
+          allowedItems: 'Bottiglie, bicchieri, vasetti di vetro, barattoli.',
+          imageUrl: 'https://images.unsplash.com/photo-1595278069441-2cf29f8005a4?auto=format&fit=crop&w=300&q=80',
+        ),
+        EcoBinItem(
+          category: 'Carta e Cartone',
+          allowedItems: 'Giornali, riviste, scatoloni piegati, quaderni.',
+          imageUrl: 'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&w=300&q=80',
+        ),
+        EcoBinItem(
+          category: 'Plastica e Lattine',
+          allowedItems: 'Bottiglie in PET, flaconi detersivi, lattine in alluminio.',
+          imageUrl: 'https://images.unsplash.com/photo-1611284416318-3905eca149d3?auto=format&fit=crop&w=300&q=80',
+        ),
+      ],
     ),
     EcoPoint(
       id: '2',
@@ -59,13 +93,27 @@ class _MapsScreenState extends State<MapsScreen> with SingleTickerProviderStateM
       type: 'bell',
       location: const LatLng(46.4965, 11.3520),
       description: 'Campana dedicata esclusivamente a vetro e carta.',
+      bins: [
+        EcoBinItem(
+          category: 'Vetro',
+          allowedItems: 'Solo bottiglie e barattoli in vetro.',
+          imageUrl: 'https://images.unsplash.com/photo-1595278069441-2cf29f8005a4?auto=format&fit=crop&w=300&q=80',
+        ),
+      ],
     ),
     EcoPoint(
       id: '3',
       title: 'Cestino Pubblico Smart',
       type: 'bin',
       location: const LatLng(46.5005, 11.3535),
-      description: 'Cestino urbano per rifiuti indifferenziati.',
+      description: 'Cestino urbano per indifferenziata.',
+      bins: [
+        EcoBinItem(
+          category: 'Indifferenziata',
+          allowedItems: 'Rifiuti non riciclabili.',
+          imageUrl: 'https://images.unsplash.com/photo-1530587191325-3db32d826c18?auto=format&fit=crop&w=300&q=80',
+        ),
+      ],
     ),
     EcoPoint(
       id: '4',
@@ -73,6 +121,18 @@ class _MapsScreenState extends State<MapsScreen> with SingleTickerProviderStateM
       type: 'island',
       location: const LatLng(46.4950, 11.3580),
       description: 'Punto di raccolta di quartiere aperto H24.',
+      bins: [
+        EcoBinItem(
+          category: 'Organico',
+          allowedItems: 'Scarti di cucina, avanzi di cibo, bucce.',
+          imageUrl: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=300&q=80',
+        ),
+        EcoBinItem(
+          category: 'Plastica',
+          allowedItems: 'Imballaggi, vaschette, borse di plastica.',
+          imageUrl: 'https://images.unsplash.com/photo-1611284416318-3905eca149d3?auto=format&fit=crop&w=300&q=80',
+        ),
+      ],
     ),
   ];
 
@@ -112,8 +172,16 @@ class _MapsScreenState extends State<MapsScreen> with SingleTickerProviderStateM
     }).toList();
   }
 
-  Map<String, dynamic> _getMarkerStyle(String type, bool isDark) {
-    switch (type) {
+  Map<String, dynamic> _getMarkerStyle(EcoPoint point, bool isDark) {
+    if (point.isFull) {
+      return {
+        'color': Colors.grey,
+        'icon': Icons.block,
+        'label': 'Punto Pieno / Colmo',
+      };
+    }
+
+    switch (point.type) {
       case 'island':
         return {
           'color': isDark ? AuraColors.primaryGreenDark : AuraColors.primaryGreen,
@@ -136,7 +204,6 @@ class _MapsScreenState extends State<MapsScreen> with SingleTickerProviderStateM
     }
   }
 
-  // Funzione per lanciare Google Maps esterno per le indicazioni stradali
   Future<void> _openGoogleMaps(LatLng location, String title) async {
     final url = Uri.parse(
       'https://www.google.com/maps/search/?api=1&query=${location.latitude},${location.longitude}',
@@ -159,139 +226,353 @@ class _MapsScreenState extends State<MapsScreen> with SingleTickerProviderStateM
     }
   }
 
-  // Mostra il pannello dettagliato dal basso al click sul marker
+  // Dialog per argomentare la segnalazione
+  void _showReportDialog(EcoPoint point, bool isFullReport) {
+    final TextEditingController reportTitleController = TextEditingController(
+      text: isFullReport ? 'Segnalazione contenitore pieno' : 'Segnalazione rimozione punto',
+    );
+    final TextEditingController reportDescController = TextEditingController();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: isDark ? AuraColors.darkCard : AuraColors.lightCard,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text(
+            isFullReport ? 'Argomenta Segnalazione Pieno' : 'Argomenta Inesistenza',
+            style: TextStyle(color: isDark ? AuraColors.textMainDark : AuraColors.textMain, fontSize: 18),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: reportTitleController,
+                  style: TextStyle(color: isDark ? AuraColors.textMainDark : AuraColors.textMain),
+                  decoration: InputDecoration(
+                    labelText: 'Titolo segnalazione',
+                    labelStyle: TextStyle(color: isDark ? AuraColors.textMutedDark : AuraColors.textMuted),
+                    filled: true,
+                    fillColor: isDark ? AuraColors.darkBg : AuraColors.lightBg,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: reportDescController,
+                  maxLines: 3,
+                  style: TextStyle(color: isDark ? AuraColors.textMainDark : AuraColors.textMain),
+                  decoration: InputDecoration(
+                    labelText: 'Aggiungi una descrizione...',
+                    labelStyle: TextStyle(color: isDark ? AuraColors.textMutedDark : AuraColors.textMuted),
+                    filled: true,
+                    fillColor: isDark ? AuraColors.darkBg : AuraColors.lightBg,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Annulla', style: TextStyle(color: isDark ? AuraColors.textMutedDark : AuraColors.textMuted)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  if (isFullReport) {
+                    point.isFull = true;
+                  } else {
+                    _ecoPoints.removeWhere((p) => p.id == point.id);
+                  }
+                });
+
+                Navigator.pop(context);
+                Navigator.pop(context);
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      isFullReport
+                          ? 'Segnalazione inviata: punto contrassegnato come pieno!'
+                          : 'Segnalazione registrata: punto rimosso.',
+                    ),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: isFullReport ? Colors.orange : Colors.redAccent,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('Invia Segnalazione', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Pannello dettagliato con layout a box orizzontali per ogni campana
   void _showMarkerDetailsSheet(EcoPoint point) {
     setState(() {
       _selectedPoint = point;
     });
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final style = _getMarkerStyle(point.type, isDark);
+    final style = _getMarkerStyle(point, isDark);
 
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) {
-        return Container(
-          padding: const EdgeInsets.fromLTRB(24, 12, 24, 36),
-          decoration: BoxDecoration(
-            color: isDark ? AuraColors.darkCard : AuraColors.lightCard,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.2),
-                blurRadius: 20,
-                offset: const Offset(0, -4),
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setModalState) {
+            return Container(
+              padding: const EdgeInsets.fromLTRB(24, 12, 24, 36),
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.85,
               ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: isDark ? AuraColors.textMutedDark : AuraColors.textMuted,
-                    borderRadius: BorderRadius.circular(2),
+              decoration: BoxDecoration(
+                color: isDark ? AuraColors.darkCard : AuraColors.lightCard,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 20,
+                    offset: const Offset(0, -4),
                   ),
-                ),
+                ],
               ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: style['color'].withOpacity(0.2),
-                      shape: BoxShape.circle,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: isDark ? AuraColors.textMutedDark : AuraColors.textMuted,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
                     ),
-                    child: Icon(
-                      style['icon'],
-                      color: style['color'],
-                      size: 30,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    const SizedBox(height: 20),
+                    Row(
                       children: [
-                        Text(
-                          point.title,
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: isDark ? AuraColors.textMainDark : AuraColors.textMain,
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: style['color'].withOpacity(0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            style['icon'],
+                            color: style['color'],
+                            size: 30,
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: style['color'].withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            style['label'],
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: style['color'],
-                            ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                point.title,
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark ? AuraColors.textMainDark : AuraColors.textMain,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: style['color'].withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  style['label'],
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: style['color'],
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              Divider(color: isDark ? AuraColors.darkSurface : AuraColors.lightSurface),
-              const SizedBox(height: 12),
-              Text(
-                'Descrizione e dettagli:',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: isDark ? AuraColors.textMutedDark : AuraColors.textMuted,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                point.description,
-                style: TextStyle(
-                  fontSize: 15,
-                  color: isDark ? AuraColors.textMainDark : AuraColors.textMain,
-                ),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    _openGoogleMaps(point.location, point.title);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: style['color'],
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                    const SizedBox(height: 20),
+                    Divider(color: isDark ? AuraColors.darkSurface : AuraColors.lightSurface),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Descrizione generale:',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? AuraColors.textMutedDark : AuraColors.textMuted,
+                      ),
                     ),
-                  ),
-                  icon: const Icon(Icons.directions, color: Colors.white),
-                  label: const Text(
-                    'Ottieni Indicazioni (Maps)',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-                  ),
+                    const SizedBox(height: 6),
+                    Text(
+                      point.description,
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: isDark ? AuraColors.textMainDark : AuraColors.textMain,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // --- SEZIONE BOX CAMPANE DELL'ISOLA ECOLOGICA ---
+                    if (point.bins.isNotEmpty) ...[
+                      Text(
+                        'Campane e Contenitori Disponibili:',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? AuraColors.textMainDark : AuraColors.textMain,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      ...point.bins.map((bin) => Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isDark ? AuraColors.darkBg : AuraColors.lightBg,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isDark ? Colors.white10 : Colors.black12,
+                          ),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Immagine della campana
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.network(
+                                bin.imageUrl,
+                                width: 70,
+                                height: 70,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) => Container(
+                                  width: 70,
+                                  height: 70,
+                                  color: Colors.grey.withOpacity(0.3),
+                                  child: const Icon(Icons.image_not_supported, size: 30),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            // Dettagli categoria e prodotti
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    bin.category,
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: isDark ? AuraColors.textMainDark : AuraColors.textMain,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Cosa buttare: ${bin.allowedItems}',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: isDark ? AuraColors.textMutedDark : AuraColors.textMuted,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      )),
+                      const SizedBox(height: 10),
+                    ],
+
+                    // Sezione Segnalazioni (Pieno / Non esiste)
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isDark ? AuraColors.darkBg : AuraColors.lightBg,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          TextButton.icon(
+                            onPressed: () => _showReportDialog(point, true),
+                            icon: const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 20),
+                            label: Text(
+                              'Segnala Pieno',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: isDark ? AuraColors.textMainDark : AuraColors.textMain,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          Container(
+                            height: 24,
+                            width: 1,
+                            color: isDark ? AuraColors.textMutedDark : AuraColors.textMuted,
+                          ),
+                          TextButton.icon(
+                            onPressed: () => _showReportDialog(point, false),
+                            icon: const Icon(Icons.delete_forever, color: Colors.redAccent, size: 20),
+                            label: Text(
+                              'Non esiste',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: isDark ? AuraColors.textMainDark : AuraColors.textMain,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _openGoogleMaps(point.location, point.title);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: style['color'],
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        icon: const Icon(Icons.directions, color: Colors.white),
+                        label: const Text(
+                          'Ottieni Indicazioni (Maps)',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     ).whenComplete(() {
@@ -376,6 +657,13 @@ class _MapsScreenState extends State<MapsScreen> with SingleTickerProviderStateM
           type: result['type'],
           location: result['location'],
           description: result['description'],
+          bins: [
+            EcoBinItem(
+              category: 'Generale',
+              allowedItems: 'Conforme alla categoria selezionata.',
+              imageUrl: 'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&w=300&q=80',
+            ),
+          ],
         );
         _ecoPoints.add(newPoint);
         _mapController.move(newPoint.location, 16.0);
@@ -464,7 +752,7 @@ class _MapsScreenState extends State<MapsScreen> with SingleTickerProviderStateM
                       ),
                     ),
                   ..._filteredPoints.map((point) {
-                    final style = _getMarkerStyle(point.type, isDark);
+                    final style = _getMarkerStyle(point, isDark);
                     final isSelected = _selectedPoint?.id == point.id;
 
                     return Marker(
