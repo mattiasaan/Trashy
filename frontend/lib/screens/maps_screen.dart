@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../themes/app_colors.dart';
 import 'add_marker_screen.dart';
+import '../api/trash_api_service.dart';
 
 class EcoBinItem {
   final String category; 
@@ -61,101 +62,9 @@ class _MapsScreenState extends State<MapsScreen> with SingleTickerProviderStateM
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
 
-  // Lista iniziale con Centro di smaltimento, Isole ecologiche, Cestini e Farmacia (Raccolta Medicinali)
-  final List<EcoPoint> _ecoPoints = [
-    // 1 Centro di Smaltimento principale
-    EcoPoint(
-      id: 'disp_1',
-      title: 'Centro di Smaltimento Principale',
-      type: 'disposal_center',
-      location: const LatLng(46.4990, 11.3560),
-      description: 'Centro di raccolta comunale per tutti i tipi di materiali e rifiuti ingombranti.',
-      bins: [
-        EcoBinItem(
-          category: 'Campana del Vetro',
-          allowedItems: 'Bottiglie, vasetti e barattoli di vetro.',
-          imageUrl: 'https://images.unsplash.com/photo-1595278069441-2cf29f8005a4?auto=format&fit=crop&w=300&q=80',
-        ),
-        EcoBinItem(
-          category: 'Campana della Carta',
-          allowedItems: 'Giornali, riviste, cartoni piegati.',
-          imageUrl: 'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&w=300&q=80',
-        ),
-      ],
-    ),
-
-    // 3 Isole Ecologiche
-    EcoPoint(
-      id: 'island_1',
-      title: 'Isola Ecologica Quartiere Nord',
-      type: 'island',
-      location: const LatLng(46.5020, 11.3510),
-      description: 'Isola ecologica di zona per la differenziata di base.',
-      bins: [
-        EcoBinItem(
-          category: 'Campana del Vetro',
-          allowedItems: 'Bottiglie e barattoli in vetro.',
-          imageUrl: 'https://images.unsplash.com/photo-1595278069441-2cf29f8005a4?auto=format&fit=crop&w=300&q=80',
-        ),
-      ],
-    ),
-    EcoPoint(
-      id: 'island_2',
-      title: 'Isola Ecologica Centro',
-      type: 'island',
-      location: const LatLng(46.4965, 11.3520),
-      description: 'Isola ecologica di zona aperta H24.',
-      bins: [
-        EcoBinItem(
-          category: 'Campana della Carta',
-          allowedItems: 'Carta e cartone.',
-          imageUrl: 'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&w=300&q=80',
-        ),
-      ],
-    ),
-    EcoPoint(
-      id: 'island_3',
-      title: 'Isola Ecologica Sud',
-      type: 'island',
-      location: const LatLng(46.4940, 11.3590),
-      description: 'Punto di raccolta multimateriale.',
-      bins: [
-        EcoBinItem(
-          category: 'Campana della Plastica',
-          allowedItems: 'Imballaggi in plastica.',
-          imageUrl: 'https://images.unsplash.com/photo-1611284416318-3905eca149d3?auto=format&fit=crop&w=300&q=80',
-        ),
-      ],
-    ),
-
-    // 1 Punto di raccolta medicinali (Farmacia)
-    EcoPoint(
-      id: 'pharmacy_1',
-      title: 'Farmacia Comunale - Raccolta Medicinali',
-      type: 'pharmacy',
-      location: const LatLng(46.4975, 11.3540),
-      description: 'Contenitore dedicato allo smaltimento sicuro di medicinali scaduti o scarti di farmaci.',
-      bins: [
-        EcoBinItem(
-          category: 'Contenitore Farmaci Scaduti',
-          allowedItems: 'Compresse, sciroppi, flaconi e pomate scaduti (senza scatola di cartone esterna).',
-          imageUrl: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=300&q=80',
-        ),
-      ],
-    ),
-
-    // 10 Cestini Pubblici
-    EcoPoint(id: 'bin_1', title: 'Cestino Via Roma 1', type: 'bin', location: const LatLng(46.4980, 11.3530), description: 'Cestino urbano.'),
-    EcoPoint(id: 'bin_2', title: 'Cestino Via Roma 12', type: 'bin', location: const LatLng(46.4983, 11.3535), description: 'Cestino urbano.'),
-    EcoPoint(id: 'bin_3', title: 'Cestino Piazza Walther', type: 'bin', location: const LatLng(46.4995, 11.3542), description: 'Cestino urbano.'),
-    EcoPoint(id: 'bin_4', title: 'Cestino Via Portici', type: 'bin', location: const LatLng(46.4970, 11.3548), description: 'Cestino urbano.'),
-    EcoPoint(id: 'bin_5', title: 'Cestino Via Museo', type: 'bin', location: const LatLng(46.5001, 11.3520), description: 'Cestino urbano.'),
-    EcoPoint(id: 'bin_6', title: 'Cestino Lungo Talvera', type: 'bin', location: const LatLng(46.5015, 11.3530), description: 'Cestino urbano.'),
-    EcoPoint(id: 'bin_7', title: 'Cestino Via Cappuccini', type: 'bin', location: const LatLng(46.4950, 11.3560), description: 'Cestino urbano.'),
-    EcoPoint(id: 'bin_8', title: 'Cestino Viale Trento', type: 'bin', location: const LatLng(46.4935, 11.3525), description: 'Cestino urbano.'),
-    EcoPoint(id: 'bin_9', title: 'Cestino Via Torino', type: 'bin', location: const LatLng(46.4915, 11.3540), description: 'Cestino urbano.'),
-    EcoPoint(id: 'bin_10', title: 'Cestino Corso Italia', type: 'bin', location: const LatLng(46.4955, 11.3485), description: 'Cestino urbano.'),
-  ];
+  // Punti caricati dal backend (GET /api/points)
+  final List<EcoPoint> _ecoPoints = [];
+  bool _loadingPoints = false;
 
   @override
   void initState() {
@@ -168,6 +77,8 @@ class _MapsScreenState extends State<MapsScreen> with SingleTickerProviderStateM
     _pulseAnimation = Tween<double>(begin: 20.0, end: 50.0).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
+
+    _loadPoints(_initialCenter);
 
     _searchController.addListener(() {
       setState(() {
@@ -182,6 +93,57 @@ class _MapsScreenState extends State<MapsScreen> with SingleTickerProviderStateM
     _mapController.dispose();
     _searchController.dispose();
     super.dispose();
+  }
+
+  // Mappa kind del backend -> tipo usato dalla UI
+  static String _typeFromKind(String kind) {
+    switch (kind) {
+      case 'centre':
+        return 'disposal_center';
+      case 'pharmacy':
+        return 'pharmacy';
+      case 'container':
+      default:
+        return 'island';
+    }
+  }
+
+  Future<void> _loadPoints(LatLng center) async {
+    setState(() => _loadingPoints = true);
+    try {
+      final points = await TrashApiService.getPoints(
+        lat: center.latitude,
+        lon: center.longitude,
+        radiusM: 5000,
+        limit: 200,
+      );
+      if (!mounted) return;
+      setState(() {
+        _ecoPoints
+          ..clear()
+          ..addAll(points.map((p) => EcoPoint(
+                id: p.id,
+                title: p.name.isEmpty ? 'Punto di raccolta' : p.name,
+                type: _typeFromKind(p.kind),
+                location: LatLng(p.lat, p.lon),
+                description: [
+                  if (p.address != null) p.address!,
+                  if (p.openingHours != null) 'Orari: ${p.openingHours}',
+                ].join('
+'),
+                bins: p.materials
+                    .map((m) => EcoBinItem(category: m, allowedItems: m, imageUrl: ''))
+                    .toList(),
+              )));
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) setState(() => _loadingPoints = false);
+    }
   }
 
   List<EcoPoint> get _filteredPoints {
@@ -484,7 +446,7 @@ class _MapsScreenState extends State<MapsScreen> with SingleTickerProviderStateM
                           children: [
                             ClipRRect(
                               borderRadius: BorderRadius.circular(12),
-                              child: Image.network(
+                              child: bin.imageUrl.isEmpty ? const SizedBox(width: 70, height: 70, child: Icon(Icons.recycling, size: 30)) : Image.network(
                                 bin.imageUrl,
                                 width: 70,
                                 height: 70,
@@ -512,7 +474,7 @@ class _MapsScreenState extends State<MapsScreen> with SingleTickerProviderStateM
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    'Cosa conferire: ${bin.allowedItems}',
+                                    'Materiali: ${bin.allowedItems}',
                                     style: TextStyle(
                                       fontSize: 13,
                                       color: isDark ? AuraColors.textMutedDark : AuraColors.textMuted,
@@ -651,6 +613,7 @@ class _MapsScreenState extends State<MapsScreen> with SingleTickerProviderStateM
       });
 
       _mapController.move(currentLatLng, 16.0);
+      _loadPoints(currentLatLng);
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

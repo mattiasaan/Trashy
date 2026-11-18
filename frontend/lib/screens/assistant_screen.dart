@@ -1,6 +1,8 @@
 // lib/screens/assistant_screen.dart
 import 'package:flutter/material.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:geolocator/geolocator.dart';
+import '../api/trash_api_service.dart';
 import '../themes/app_colors.dart';
 
 class ChatMessage {
@@ -81,19 +83,42 @@ class _AssistantScreenState extends State<AssistantScreen> {
 
     _scrollToBottom();
 
-    // Simulazione risposta dell'agente LLM
-    await Future.delayed(const Duration(seconds: 1));
+    // Posizione (opzionale): se disponibile il backend restituisce anche i punti vicini
+    double? lat;
+    double? lon;
+    try {
+      final permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.always || permission == LocationPermission.whileInUse) {
+        final pos = await Geolocator.getLastKnownPosition() ??
+            await Geolocator.getCurrentPosition(
+              locationSettings: const LocationSettings(timeLimit: Duration(seconds: 5)),
+            );
+        lat = pos.latitude;
+        lon = pos.longitude;
+      }
+    } catch (_) {}
+
+    String reply;
+    try {
+      final res = await TrashApiService.askAssistant(text: text, lat: lat, lon: lon);
+      reply = res.answer;
+      final points = res.points;
+      if (points != null && points.isNotEmpty) {
+        reply += '\n\nPunti di raccolta vicini:';
+        for (final p in points.take(3)) {
+          final dist = p.distanceM != null ? ' (${p.distanceM} m)' : '';
+          reply += '\n• ${p.name.isEmpty ? p.kind : p.name}$dist';
+        }
+      }
+    } catch (e) {
+      reply = e.toString().replaceFirst('Exception: ', '');
+    }
 
     if (!mounted) return;
 
     setState(() {
       _isLoading = false;
-      _messages.add(
-        ChatMessage(
-          text: 'Ho elaborato la tua richiesta: "$text". Ecco le informazioni aggiornate!',
-          isUser: false,
-        ),
-      );
+      _messages.add(ChatMessage(text: reply, isUser: false));
     });
 
     _scrollToBottom();
