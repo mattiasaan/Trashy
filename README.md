@@ -174,6 +174,9 @@ Limiti da conoscere:
 
 ## Deploy su Raspberry Pi
 
+**Consigliato: con Docker**, vedi [backend/DEPLOY_DOCKER.md](backend/DEPLOY_DOCKER.md) (API, aggiornamento OSM e
+Cloudflare Tunnel in container che ripartono a ogni accensione). Sotto, l'installazione manuale con systemd.
+
 Requisiti: Raspberry Pi OS **Bookworm o più recente** (serve Python ≥ 3.11), Pi 4/5 a 64 bit.
 
 ```bash
