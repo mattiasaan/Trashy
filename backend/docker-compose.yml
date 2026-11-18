@@ -1,0 +1,56 @@
+# Trashy sul Raspberry Pi: API + aggiornamento punti OSM + Cloudflare Tunnel.
+# Avvio:  docker compose up -d --build      (vedi DEPLOY_DOCKER.md)
+# "restart: unless-stopped" = i container ripartono da soli a ogni accensione del Raspberry.
+name: trashy
+
+services:
+  api:
+    build: .
+    image: trashy-api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_FILE: /data/trashy.db
+      # L'API è raggiungibile da Internet solo tramite il tunnel: l'IP reale arriva in CF-Connecting-IP
+      TRUST_CF_CONNECTING_IP: "true"
+    volumes:
+      - trashy-db:/data
+    ports:
+      # Solo dal Raspberry stesso (per i test con curl). Non è esposta sulla rete di casa.
+      - "127.0.0.1:8000:8000"
+    extra_hosts:
+      # Per raggiungere Ollama installato sul Raspberry: AI_BASE_URL=http://host.docker.internal:11434/v1
+      - "host.docker.internal:host-gateway"
+    logging: &logging
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  osm-updater:
+    build: .
+    image: trashy-api
+    restart: unless-stopped
+    command: osm-updater
+    env_file: .env
+    environment:
+      DB_FILE: /data/trashy.db
+      OSM_UPDATE_DAYS: "7"
+    volumes:
+      - trashy-db:/data
+    healthcheck:
+      disable: true
+    logging: *logging
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    env_file: tunnel.env   # contiene TUNNEL_TOKEN=...
+    depends_on:
+      api:
+        condition: service_healthy
+    logging: *logging
+
+volumes:
+  trashy-db:

@@ -2,6 +2,7 @@
 __pycache__/
 .env
 backend/data/trashy.db
+tunnel.env
 
 # --- Flutter / Dart / Pub related ---
 **/doc/api/
