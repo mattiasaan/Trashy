@@ -1,0 +1,11 @@
+.venv/
+**/__pycache__/
+*.pyc
+.env
+tunnel.env
+data/*.db
+data/*.db-*
+.git
+Dockerfile
+docker-compose.yml
+*.md
