@@ -172,14 +172,8 @@ class AskResponseModel {
 // ==================== SERVIZIO API ====================
 
 class TrashApiService {
-  // Di default il backend sul Raspberry (Cloudflare Tunnel).
-  // Per usare il backend sul PC:  flutter run --dart-define=API_URL=local
-  static const String _apiUrl =
-      String.fromEnvironment('API_URL', defaultValue: 'https://trashy.natsu-cloud.fyi');
-
+  // Gestione dinamica dell'URL locale (Emulatore Android vs Web/Desktop/iOS)
   static String get baseUrl {
-    if (_apiUrl != 'local') return _apiUrl;
-    // Backend locale: l'emulatore Android vede il PC come 10.0.2.2
     if (kIsWeb) return 'http://localhost:8000';
     if (Platform.isAndroid) return 'http://10.0.2.2:8000';
     return 'http://localhost:8000';
