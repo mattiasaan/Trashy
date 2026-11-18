@@ -3,3 +3,64 @@ __pycache__/
 .env
 backend/data/trashy.db
 tunnel.env
+
+# --- Flutter / Dart / Pub related ---
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+/coverage/
+
+# --- IDE (VS Code, Android Studio, IntelliJ) ---
+.idea/
+*.iml
+*.ipr
+*.iws
+.metadata
+
+# --- Android Build & Cache ---
+/android/.gradle/
+/android/app/debug
+/android/app/profile
+/android/app/release
+/android/local.properties
+/android/captures/
+/android/gradlew
+/android/gradlew.bat
+
+# --- iOS / Xcode ---
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Flutter/Flutter.podspec
+*.xcworkspace/
+*.xcuserdata/
+
+# --- Miscellaneous & Logs ---
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+
+# --- Obfuscation & Symbolication ---
+app.*.symbols
+app.*.map.json
+
+# --- Environment & Local Secrets ---
+.env
+.env.*
+
+frontend/ios
+frontend/macos
+frontend/linux
+frontend/windows
+frontend/web

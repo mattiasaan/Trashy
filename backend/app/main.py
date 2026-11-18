@@ -216,7 +216,7 @@ def list_points(
     lon: float = Query(..., ge=-180, le=180),
     radius_m: int = Query(3000, ge=100, le=50000),
     category: str | None = Query(None, description="Id categoria, es. 'vetro_metallo'"),
-    kind: Literal["container", "centre", "pharmacy"] | None = None,
+    kind: Literal["container", "centre", "pharmacy", "waste_basket"] | None = None,
     limit: int = Query(20, ge=1, le=200),
 ):
     if category and category not in CATEGORIES:
