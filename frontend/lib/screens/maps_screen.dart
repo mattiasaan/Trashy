@@ -1,4 +1,6 @@
 // lib/screens/maps_screen.dart
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -8,16 +10,216 @@ import '../themes/app_colors.dart';
 import 'add_marker_screen.dart';
 import '../api/trash_api_service.dart';
 
+/// Durata dello stato "pieno" (vale per cestini e singoli contenitori)
+const Duration kFullDuration = Duration(hours: 12);
+
+// ---------------------------------------------------------------------------
+// CATALOGO DEI CONTENITORI
+// Associa i materiali restituiti dal backend a titolo, colore, icona,
+// elenco di cosa si può buttare e immagine.
+//
+// IMMAGINI: nel campo `image` puoi inserire
+//   - un URL (https://...)  -> viene caricata da internet
+//   - un asset (assets/bins/carta.png) -> dichiarato nel pubspec.yaml
+// Se è vuoto (o non si carica) viene mostrata una grafica colorata con icona.
+// ---------------------------------------------------------------------------
+class _BinType {
+  final List<String> keys; // parole chiave (minuscolo) cercate nel materiale
+  final String title;
+  final Color color;
+  final IconData icon;
+  final List<String> accepted;
+  final String image;
+
+  const _BinType({
+    required this.keys,
+    required this.title,
+    required this.color,
+    required this.icon,
+    required this.accepted,
+    this.image = '',
+  });
+}
+
+const List<_BinType> _binTypes = [
+  _BinType(
+    keys: ['paper', 'carta', 'cardboard', 'cartone'],
+    title: 'Carta e cartone',
+    color: Color(0xFF1E88E5),
+    icon: Icons.newspaper,
+    accepted: [
+      'Giornali e riviste',
+      'Scatole di cartone piegate',
+      'Fogli e quaderni',
+      'Sacchetti di carta',
+    ],
+  ),
+  _BinType(
+    keys: ['glass', 'vetro'],
+    title: 'Vetro',
+    color: Color(0xFF43A047),
+    icon: Icons.liquor,
+    accepted: [
+      'Bottiglie di vetro',
+      'Barattoli e vasetti',
+      'Bicchieri e caraffe',
+    ],
+  ),
+  _BinType(
+    keys: ['plastic', 'plastica'],
+    title: 'Plastica',
+    color: Color(0xFFF9A825),
+    icon: Icons.local_drink_outlined,
+    accepted: [
+      'Bottiglie di plastica',
+      'Flaconi di detersivi',
+      'Vaschette e imballaggi puliti',
+      'Sacchetti e pellicole',
+    ],
+  ),
+  _BinType(
+    keys: ['metal', 'metall', 'lattin', 'alumin'],
+    title: 'Metalli e lattine',
+    color: Color(0xFF78909C),
+    icon: Icons.hardware_outlined,
+    accepted: [
+      'Lattine di bevande',
+      'Scatolette di tonno e legumi',
+      'Fogli di alluminio',
+      'Tappi metallici',
+    ],
+  ),
+  _BinType(
+    keys: ['organ', 'umido', 'food'],
+    title: 'Organico',
+    color: Color(0xFF795548),
+    icon: Icons.eco_outlined,
+    accepted: [
+      'Scarti di cucina',
+      'Avanzi di cibo',
+      'Filtri di tè e fondi di caffè',
+      'Fiori e piante',
+    ],
+  ),
+  _BinType(
+    keys: ['cloth', 'abit', 'vestit', 'textile', 'tessil', 'shoes', 'scarpe'],
+    title: 'Abiti usati',
+    color: Color(0xFF8E24AA),
+    icon: Icons.checkroom,
+    accepted: [
+      'Vestiti puliti',
+      'Scarpe in coppia',
+      'Borse e accessori',
+      'Biancheria',
+    ],
+  ),
+  _BinType(
+    keys: ['batter', 'pile'],
+    title: 'Pile esauste',
+    color: Color(0xFFE53935),
+    icon: Icons.battery_charging_full,
+    accepted: [
+      'Pile stilo e mini stilo',
+      'Pile a bottone',
+      'Batterie portatili piccole',
+    ],
+  ),
+  _BinType(
+    keys: ['oil', 'olio'],
+    title: 'Olio esausto',
+    color: Color(0xFFEF6C00),
+    icon: Icons.opacity,
+    accepted: [
+      'Olio da cucina usato',
+      'Olio di frittura',
+    ],
+  ),
+  _BinType(
+    keys: ['electr', 'raee', 'weee'],
+    title: 'Elettronica (RAEE)',
+    color: Color(0xFF3949AB),
+    icon: Icons.devices_other,
+    accepted: [
+      'Piccoli elettrodomestici',
+      'Cellulari e caricabatterie',
+      'Cavi e accessori',
+    ],
+  ),
+  _BinType(
+    keys: ['medic', 'farmac', 'drug', 'pharm'],
+    title: 'Medicinali',
+    color: Color(0xFF2979FF),
+    icon: Icons.local_pharmacy,
+    accepted: [
+      'Medicinali scaduti',
+      'Compresse e sciroppi inutilizzati',
+    ],
+  ),
+  _BinType(
+    keys: ['residual', 'indifferenz', 'secco', 'general'],
+    title: 'Indifferenziato',
+    color: Color(0xFF757575),
+    icon: Icons.delete_outline,
+    accepted: [
+      'Rifiuti non riciclabili',
+      'Pannolini e assorbenti',
+      'Cocci di ceramica',
+      'Mozziconi e polvere',
+    ],
+  ),
+];
+
 class EcoBinItem {
-  final String category; 
-  final String allowedItems;
+  final String category;
+  final List<String> accepted;
   final String imageUrl;
+  final Color color;
+  final IconData icon;
+
+  /// Momento in cui il contenitore è stato segnalato pieno (null = non pieno)
+  DateTime? fullSince;
 
   EcoBinItem({
     required this.category,
-    required this.allowedItems,
+    required this.accepted,
     required this.imageUrl,
+    required this.color,
+    required this.icon,
+    this.fullSince,
   });
+
+  /// Crea il contenitore a partire dal materiale restituito dal backend
+  factory EcoBinItem.fromMaterial(String material) {
+    final m = material.toLowerCase().trim();
+    for (final t in _binTypes) {
+      if (t.keys.any((k) => m.contains(k))) {
+        return EcoBinItem(
+          category: t.title,
+          accepted: t.accepted,
+          imageUrl: t.image,
+          color: t.color,
+          icon: t.icon,
+        );
+      }
+    }
+    final label = m.isEmpty ? 'Altro' : m[0].toUpperCase() + m.substring(1);
+    return EcoBinItem(
+      category: label,
+      accepted: const ['Controlla le indicazioni riportate sul contenitore.'],
+      imageUrl: '',
+      color: const Color(0xFF607D8B),
+      icon: Icons.recycling,
+    );
+  }
+
+  bool get isFull {
+    final since = fullSince;
+    if (since == null) return false;
+    return DateTime.now().difference(since) < kFullDuration;
+  }
+
+  void markFull() => fullSince = DateTime.now();
+  void markEmpty() => fullSince = null;
 }
 
 class EcoPoint {
@@ -26,8 +228,10 @@ class EcoPoint {
   final String type; // 'disposal_center', 'island', 'bin', 'pharmacy'
   final LatLng location;
   final String description;
-  bool isFull;
   final List<EcoBinItem> bins;
+
+  /// Usato solo dai cestini: momento in cui è stato segnalato pieno
+  DateTime? fullSince;
 
   EcoPoint({
     required this.id,
@@ -35,9 +239,26 @@ class EcoPoint {
     required this.type,
     required this.location,
     required this.description,
-    this.isFull = false,
+    this.fullSince,
     this.bins = const [],
   });
+
+  /// Cestino: pieno se la segnalazione ha meno di 12 ore.
+  /// Isola ecologica: pieno solo se TUTTI i contenitori sono pieni.
+  bool get isFull {
+    if (type == 'island') {
+      return bins.isNotEmpty && bins.every((b) => b.isFull);
+    }
+    final since = fullSince;
+    if (since == null) return false;
+    return DateTime.now().difference(since) < kFullDuration;
+  }
+
+  /// Numero di contenitori pieni (isole ecologiche)
+  int get fullBinsCount => bins.where((b) => b.isFull).length;
+
+  void markFull() => fullSince = DateTime.now();
+  void markEmpty() => fullSince = null;
 }
 
 class MapsScreen extends StatefulWidget {
@@ -50,17 +271,19 @@ class MapsScreen extends StatefulWidget {
 class _MapsScreenState extends State<MapsScreen> with SingleTickerProviderStateMixin {
   final MapController _mapController = MapController();
   final TextEditingController _searchController = TextEditingController();
-  
+
   final LatLng _initialCenter = const LatLng(46.4983, 11.3548);
-  
+
   String _selectedFilter = 'all';
   String _searchQuery = '';
   EcoPoint? _selectedPoint;
-  
+
   LatLng? _currentPosition;
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
+
+  Timer? _expiryTimer;
 
   // Punti caricati dal backend (GET /api/points)
   final List<EcoPoint> _ecoPoints = [];
@@ -78,6 +301,11 @@ class _MapsScreenState extends State<MapsScreen> with SingleTickerProviderStateM
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
+    // Ridisegna ogni minuto per far scadere automaticamente lo stato "pieno"
+    _expiryTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted) setState(() {});
+    });
+
     _loadPoints(_initialCenter);
 
     _searchController.addListener(() {
@@ -89,6 +317,7 @@ class _MapsScreenState extends State<MapsScreen> with SingleTickerProviderStateM
 
   @override
   void dispose() {
+    _expiryTimer?.cancel();
     _pulseController.dispose();
     _mapController.dispose();
     _searchController.dispose();
@@ -102,10 +331,28 @@ class _MapsScreenState extends State<MapsScreen> with SingleTickerProviderStateM
         return 'disposal_center';
       case 'pharmacy':
         return 'pharmacy';
+      case 'bin':
+      case 'waste_basket': // aggiungi qui eventuali altri nomi usati dal backend
+        return 'bin';
       case 'container':
       default:
         return 'island';
     }
+  }
+
+  /// Trasforma i materiali del backend in contenitori (senza duplicati).
+  /// Un cestino senza materiali indicati viene trattato come indifferenziato.
+  static List<EcoBinItem> _binsFromMaterials(Iterable<dynamic> materials, String type) {
+    final bins = <EcoBinItem>[];
+    final seen = <String>{};
+    for (final m in materials) {
+      final bin = EcoBinItem.fromMaterial(m.toString());
+      if (seen.add(bin.category)) bins.add(bin);
+    }
+    if (bins.isEmpty && type == 'bin') {
+      bins.add(EcoBinItem.fromMaterial('indifferenziato'));
+    }
+    return bins;
   }
 
   Future<void> _loadPoints(LatLng center) async {
@@ -118,22 +365,42 @@ class _MapsScreenState extends State<MapsScreen> with SingleTickerProviderStateM
         limit: 200,
       );
       if (!mounted) return;
+
+      // Conserva lo stato "pieno" dei punti e dei contenitori già noti
+      final previousPointFull = {
+        for (final p in _ecoPoints)
+          if (p.fullSince != null) p.id: p.fullSince!,
+      };
+      final previousBinFull = {
+        for (final p in _ecoPoints)
+          for (final b in p.bins)
+            if (b.fullSince != null) '${p.id}|${b.category}': b.fullSince!,
+      };
+
+      final newPoints = points.map((p) {
+        final type = _typeFromKind(p.kind);
+        final bins = _binsFromMaterials(p.materials, type);
+        for (final b in bins) {
+          b.fullSince = previousBinFull['${p.id}|${b.category}'];
+        }
+        return EcoPoint(
+          id: p.id,
+          title: p.name.isEmpty ? 'Punto di raccolta' : p.name,
+          type: type,
+          location: LatLng(p.lat, p.lon),
+          description: [
+            if (p.address != null) p.address!,
+            if (p.openingHours != null) 'Orari: ${p.openingHours}',
+          ].join('\n'),
+          fullSince: previousPointFull[p.id],
+          bins: bins,
+        );
+      }).toList();
+
       setState(() {
         _ecoPoints
           ..clear()
-          ..addAll(points.map((p) => EcoPoint(
-                id: p.id,
-                title: p.name.isEmpty ? 'Punto di raccolta' : p.name,
-                type: _typeFromKind(p.kind),
-                location: LatLng(p.lat, p.lon),
-                description: [
-                  if (p.address != null) p.address!,
-                  if (p.openingHours != null) 'Orari: ${p.openingHours}',
-                ].join('\n'),
-                bins: p.materials
-                    .map((m) => EcoBinItem(category: m, allowedItems: m, imageUrl: ''))
-                    .toList(),
-              )));
+          ..addAll(newPoints);
       });
     } catch (e) {
       if (!mounted) return;
@@ -158,7 +425,7 @@ class _MapsScreenState extends State<MapsScreen> with SingleTickerProviderStateM
   Map<String, dynamic> _getMarkerStyle(EcoPoint point, bool isDark) {
     if (point.isFull) {
       return {
-        'color': Colors.grey.shade700,
+        'color': Colors.red.shade700,
         'icon': Icons.block,
         'label': 'Punto Pieno / Colmo',
       };
@@ -171,12 +438,6 @@ class _MapsScreenState extends State<MapsScreen> with SingleTickerProviderStateM
           'icon': Icons.recycling,
           'label': 'Centro di Smaltimento',
         };
-      case 'island':
-        return {
-          'color': isDark ? AuraColors.primaryGreenDark : AuraColors.primaryGreen, // Verde
-          'icon': Icons.recycling,
-          'label': 'Isola Ecologica',
-        };
       case 'pharmacy':
         return {
           'color': Colors.blueAccent, // Blu per le farmacie / raccolta medicinali
@@ -184,11 +445,17 @@ class _MapsScreenState extends State<MapsScreen> with SingleTickerProviderStateM
           'label': 'Raccolta Medicinali',
         };
       case 'bin':
+        return {
+          'color': Colors.grey.shade600, // Sfondo grigio
+          'icon': Icons.delete_outline, // Icona del cestino
+          'label': 'Cestino Pubblico',
+        };
+      case 'island':
       default:
         return {
-          'color': Colors.grey, // Grigio
-          'icon': Icons.delete_outline,
-          'label': 'Cestino Pubblico',
+          'color': isDark ? AuraColors.primaryGreenDark : AuraColors.primaryGreen, // Verde
+          'icon': Icons.recycling,
+          'label': 'Isola Ecologica',
         };
     }
   }
@@ -213,6 +480,52 @@ class _MapsScreenState extends State<MapsScreen> with SingleTickerProviderStateM
         SnackBar(content: Text('Errore nell\'apertura della mappa: $e')),
       );
     }
+  }
+
+  // ----- Stato pieno / vuoto: cestini (intero punto) -----
+  void _setPointFull(EcoPoint point, StateSetter setModalState) {
+    setState(() => point.markFull());
+    setModalState(() {});
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Segnalato come pieno (valido per 12 ore).'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _setPointEmpty(EcoPoint point, StateSetter setModalState) {
+    setState(() => point.markEmpty());
+    setModalState(() {});
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Segnalato come vuoto.'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
+  // ----- Stato pieno / vuoto: singolo contenitore di un'isola ecologica -----
+  void _setBinFull(EcoBinItem bin, StateSetter setModalState) {
+    setState(() => bin.markFull());
+    setModalState(() {});
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Contenitore "${bin.category}" segnalato come pieno (valido per 12 ore).'),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _setBinEmpty(EcoBinItem bin, StateSetter setModalState) {
+    setState(() => bin.markEmpty());
+    setModalState(() {});
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Contenitore "${bin.category}" segnalato come vuoto.'),
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   void _showReportDialog(EcoPoint point, bool isFullReport) {
@@ -272,14 +585,14 @@ class _MapsScreenState extends State<MapsScreen> with SingleTickerProviderStateM
               onPressed: () {
                 setState(() {
                   if (isFullReport) {
-                    point.isFull = true;
+                    point.markFull();
                   } else {
                     _ecoPoints.removeWhere((p) => p.id == point.id);
                   }
                 });
 
-                Navigator.pop(context);
-                Navigator.pop(context);
+                Navigator.pop(context); // chiude il dialog
+                Navigator.pop(context); // chiude il bottom sheet
 
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -303,13 +616,232 @@ class _MapsScreenState extends State<MapsScreen> with SingleTickerProviderStateM
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // INTERFACCIA A BOX DEI CONTENITORI
+  // ---------------------------------------------------------------------------
+
+  /// Immagine del contenitore (URL, asset o grafica colorata di riserva)
+  Widget _buildBinImage(EcoBinItem bin, double height) {
+    Widget placeholder() => Container(
+          height: height,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [bin.color, bin.color.withOpacity(0.55)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: Stack(
+            children: [
+              Positioned(
+                right: -24,
+                top: -24,
+                child: Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withOpacity(0.12),
+                  ),
+                ),
+              ),
+              Positioned(
+                left: -20,
+                bottom: -34,
+                child: Container(
+                  width: 96,
+                  height: 96,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withOpacity(0.10),
+                  ),
+                ),
+              ),
+              Center(child: Icon(bin.icon, size: 58, color: Colors.white)),
+            ],
+          ),
+        );
+
+    final url = bin.imageUrl;
+    if (url.isEmpty) return placeholder();
+
+    if (url.startsWith('http')) {
+      return Image.network(
+        url,
+        height: height,
+        width: double.infinity,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => placeholder(),
+      );
+    }
+    return Image.asset(
+      url,
+      height: height,
+      width: double.infinity,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) => placeholder(),
+    );
+  }
+
+  /// Box (stile Material 3 Expressive) di un singolo contenitore
+  Widget _buildBinCard(
+    EcoPoint point,
+    EcoBinItem bin,
+    bool isDark,
+    StateSetter setModalState,
+  ) {
+    final textMain = isDark ? AuraColors.textMainDark : AuraColors.textMain;
+    final textMuted = isDark ? AuraColors.textMutedDark : AuraColors.textMuted;
+    final full = bin.isFull;
+    final canToggle = point.type == 'island'; // solo le isole segnalano il singolo contenitore
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: bin.color.withOpacity(isDark ? 0.16 : 0.09),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: bin.color.withOpacity(0.30), width: 1.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Immagine con eventuale badge "Pieno"
+          Stack(
+            children: [
+              _buildBinImage(bin, 140),
+              if (full)
+                Positioned.fill(
+                  child: Container(color: Colors.black.withOpacity(0.45)),
+                ),
+              if (full)
+                Positioned(
+                  right: 12,
+                  top: 12,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade700,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.block, size: 14, color: Colors.white),
+                        SizedBox(width: 6),
+                        Text(
+                          'PIENO',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.8,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  bin.category,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: textMain,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  'COSA PUOI BUTTARE',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.0,
+                    color: textMuted,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: bin.accepted
+                      .map(
+                        (item) => Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: bin.color.withOpacity(0.16),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.check_rounded, size: 16, color: bin.color),
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  item,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: textMain,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+                if (canToggle) ...[
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.tonalIcon(
+                      onPressed: () => full
+                          ? _setBinEmpty(bin, setModalState)
+                          : _setBinFull(bin, setModalState),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: (full ? Colors.green : Colors.orange).withOpacity(0.22),
+                        foregroundColor: textMain,
+                        minimumSize: const Size.fromHeight(48),
+                        shape: const StadiumBorder(),
+                      ),
+                      icon: Icon(
+                        full ? Icons.check_circle_outline : Icons.warning_amber_rounded,
+                        color: full ? Colors.green : Colors.orange,
+                        size: 20,
+                      ),
+                      label: Text(
+                        full ? 'È vuoto' : 'Segnala pieno',
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showMarkerDetailsSheet(EcoPoint point) {
     setState(() {
       _selectedPoint = point;
     });
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final style = _getMarkerStyle(point, isDark);
 
     showModalBottomSheet(
       context: context,
@@ -318,6 +850,13 @@ class _MapsScreenState extends State<MapsScreen> with SingleTickerProviderStateM
       builder: (context) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setModalState) {
+            // Calcolato qui dentro così si aggiorna appena cambia lo stato
+            final style = _getMarkerStyle(point, isDark);
+
+            // Il tasto "Segnala Pieno" a livello di punto esiste solo per i cestini.
+            // Le isole ecologiche segnalano i singoli contenitori (nei box).
+            final canReportFull = point.type == 'bin';
+
             return Container(
               padding: const EdgeInsets.fromLTRB(24, 12, 24, 36),
               constraints: BoxConstraints(
@@ -419,73 +958,31 @@ class _MapsScreenState extends State<MapsScreen> with SingleTickerProviderStateM
                     ),
                     const SizedBox(height: 20),
 
-                    // --- SEZIONE BOX CASSONETTI / CAMPANE DELL'AREA ---
+                    // --- SEZIONE BOX CONTENITORI: tipologie e cosa si può buttare ---
                     if (point.bins.isNotEmpty) ...[
                       Text(
-                        'Tipologie di Cassonetti e Campane:',
+                        point.type == 'bin' ? 'Cosa puoi buttare' : 'Contenitori e cosa puoi buttare',
                         style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
                           color: isDark ? AuraColors.textMainDark : AuraColors.textMain,
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      ...point.bins.map((bin) => Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: isDark ? AuraColors.darkBg : AuraColors.lightBg,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: isDark ? Colors.white10 : Colors.black12,
+                      if (point.type == 'island') ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          'Se un contenitore è pieno, segnalalo: lo stato dura 12 ore.',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: isDark ? AuraColors.textMutedDark : AuraColors.textMuted,
                           ),
                         ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: bin.imageUrl.isEmpty ? const SizedBox(width: 70, height: 70, child: Icon(Icons.recycling, size: 30)) : Image.network(
-                                bin.imageUrl,
-                                width: 70,
-                                height: 70,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) => Container(
-                                  width: 70,
-                                  height: 70,
-                                  color: Colors.grey.withOpacity(0.3),
-                                  child: const Icon(Icons.image_not_supported, size: 30),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    bin.category,
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: isDark ? AuraColors.textMainDark : AuraColors.textMain,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'Materiali: ${bin.allowedItems}',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: isDark ? AuraColors.textMutedDark : AuraColors.textMuted,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      )),
-                      const SizedBox(height: 10),
+                      ],
+                      const SizedBox(height: 14),
+                      ...point.bins.map(
+                        (bin) => _buildBinCard(point, bin, isDark, setModalState),
+                      ),
+                      const SizedBox(height: 4),
                     ],
 
                     // Sezione Segnalazioni
@@ -498,23 +995,36 @@ class _MapsScreenState extends State<MapsScreen> with SingleTickerProviderStateM
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
-                          TextButton.icon(
-                            onPressed: () => _showReportDialog(point, true),
-                            icon: const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 20),
-                            label: Text(
-                              'Segnala Pieno',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: isDark ? AuraColors.textMainDark : AuraColors.textMain,
-                                fontWeight: FontWeight.w600,
+                          // Tasto "Segnala Pieno" / "È vuoto": solo per i cestini
+                          if (canReportFull) ...[
+                            TextButton.icon(
+                              onPressed: () {
+                                if (point.isFull) {
+                                  _setPointEmpty(point, setModalState);
+                                } else {
+                                  _setPointFull(point, setModalState); // diretto, senza dialog
+                                }
+                              },
+                              icon: Icon(
+                                point.isFull ? Icons.check_circle_outline : Icons.warning_amber_rounded,
+                                color: point.isFull ? Colors.green : Colors.orange,
+                                size: 20,
+                              ),
+                              label: Text(
+                                point.isFull ? 'È vuoto' : 'Segnala Pieno',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: isDark ? AuraColors.textMainDark : AuraColors.textMain,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
-                          ),
-                          Container(
-                            height: 24,
-                            width: 1,
-                            color: isDark ? AuraColors.textMutedDark : AuraColors.textMuted,
-                          ),
+                            Container(
+                              height: 24,
+                              width: 1,
+                              color: isDark ? AuraColors.textMutedDark : AuraColors.textMuted,
+                            ),
+                          ],
                           TextButton.icon(
                             onPressed: () => _showReportDialog(point, false),
                             icon: const Icon(Icons.delete_forever, color: Colors.redAccent, size: 20),
@@ -561,9 +1071,11 @@ class _MapsScreenState extends State<MapsScreen> with SingleTickerProviderStateM
         );
       },
     ).whenComplete(() {
-      setState(() {
-        _selectedPoint = null;
-      });
+      if (mounted) {
+        setState(() {
+          _selectedPoint = null;
+        });
+      }
     });
   }
 
@@ -606,7 +1118,7 @@ class _MapsScreenState extends State<MapsScreen> with SingleTickerProviderStateM
       );
 
       final currentLatLng = LatLng(position.latitude, position.longitude);
-      
+
       setState(() {
         _currentPosition = currentLatLng;
       });
@@ -643,13 +1155,18 @@ class _MapsScreenState extends State<MapsScreen> with SingleTickerProviderStateM
           type: result['type'], // 'disposal_center', 'island', 'bin', o 'pharmacy'
           location: result['location'],
           description: result['description'],
-          bins: [
-            EcoBinItem(
-              category: 'Generale',
-              allowedItems: 'Conforme alla categoria del punto.',
-              imageUrl: 'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&w=300&q=80',
-            ),
-          ],
+          bins: result['type'] == 'bin'
+              ? [EcoBinItem.fromMaterial('indifferenziato')]
+              : [
+                  EcoBinItem(
+                    category: 'Generale',
+                    accepted: const ['Conforme alla categoria del punto.'],
+                    imageUrl:
+                        'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&w=300&q=80',
+                    color: const Color(0xFF00897B),
+                    icon: Icons.recycling,
+                  ),
+                ],
         );
         _ecoPoints.add(newPoint);
         _mapController.move(newPoint.location, 16.0);
@@ -743,34 +1260,68 @@ class _MapsScreenState extends State<MapsScreen> with SingleTickerProviderStateM
                     final style = _getMarkerStyle(point, isDark);
                     final isSelected = _selectedPoint?.id == point.id;
 
+                    // Isola con alcuni (non tutti) contenitori pieni -> badge arancione
+                    final partialFull = point.type == 'island' &&
+                        !point.isFull &&
+                        point.fullBinsCount > 0;
+
                     return Marker(
                       point: point.location,
                       width: 50,
                       height: 50,
                       child: GestureDetector(
                         onTap: () => _showMarkerDetailsSheet(point),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          decoration: BoxDecoration(
-                            color: style['color'],
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: Colors.white,
-                              width: isSelected ? 3 : 2,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.3),
-                                blurRadius: 6,
-                                offset: const Offset(0, 3),
+                        child: Stack(
+                          fit: StackFit.expand,
+                          clipBehavior: Clip.none,
+                          children: [
+                            AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              decoration: BoxDecoration(
+                                color: style['color'],
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: isSelected ? 3 : 2,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.3),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                          child: Icon(
-                            style['icon'],
-                            color: Colors.white,
-                            size: isSelected ? 26 : 22,
-                          ),
+                              child: Icon(
+                                style['icon'],
+                                color: Colors.white,
+                                size: isSelected ? 26 : 22,
+                              ),
+                            ),
+                            if (partialFull)
+                              Positioned(
+                                right: -2,
+                                top: -2,
+                                child: Container(
+                                  width: 20,
+                                  height: 20,
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: Colors.white, width: 2),
+                                  ),
+                                  child: Text(
+                                    '${point.fullBinsCount}',
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                     );
