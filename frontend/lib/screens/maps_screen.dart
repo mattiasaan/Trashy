@@ -129,8 +129,7 @@ class _MapsScreenState extends State<MapsScreen> with SingleTickerProviderStateM
                 description: [
                   if (p.address != null) p.address!,
                   if (p.openingHours != null) 'Orari: ${p.openingHours}',
-                ].join('
-'),
+                ].join('\n'),
                 bins: p.materials
                     .map((m) => EcoBinItem(category: m, allowedItems: m, imageUrl: ''))
                     .toList(),
